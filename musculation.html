@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Musculation - NeoStats</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="container">
+        <div class="nav-brand">
+          <a href="index.html">
+            <h1>💪 NeoStats</h1>
+          </a>
+        </div>
+        <button
+          class="mobile-menu-toggle"
+          id="mobileMenuToggle"
+          aria-label="Menu"
+        >
+          ☰
+        </button>
+        <ul class="nav-menu" id="navMenu">
+          <li><a href="index.html">Accueil</a></li>
+          <li><a href="musculation.html" class="active">Musculation</a></li>
+          <li><a href="mes-stats.html">Mes Stats</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="container">
+        <div class="page-header">
+          <h1 class="page-title">💪 Musculation</h1>
+          <p class="page-subtitle">
+            Enregistrez vos exercices et suivez votre progression
+          </p>
+        </div>
+
+        <!-- Add Stats Section -->
+        <section class="add-stats-section">
+          <div class="section-header">
+            <h2>➕ Nouvel exercice</h2>
+            <p>Ajoutez vos performances pour cet exercice</p>
+          </div>
+
+          <form id="addStatsForm" class="stats-form">
+            <!-- Date Input -->
+            <div class="input-group-modern">
+              <div class="input-icon">📅</div>
+              <div class="input-wrapper">
+                <label for="date">Date de la séance</label>
+                <input type="date" id="date" name="date" required />
+              </div>
+            </div>
+
+            <!-- Muscle Group Selection -->
+            <div class="muscle-group-selection-section">
+              <label class="section-label"
+                >🎯 Choisissez un groupe musculaire</label
+              >
+              <div id="muscleGroupGrid" class="muscle-group-grid">
+                <!-- Les groupes musculaires seront générés dynamiquement -->
+              </div>
+            </div>
+
+            <!-- Exercise Selection -->
+            <div
+              class="exercise-selection-section"
+              id="exerciseSelectionSection"
+              style="display: none"
+            >
+              <label class="section-label" id="exerciseSectionLabel"
+                >💪 Choisissez un exercice</label
+              >
+              <div id="exerciseGrid" class="exercise-grid">
+                <!-- Les exercices seront générés dynamiquement -->
+              </div>
+
+              <!-- Custom Exercise Input -->
+              <div
+                id="customExerciseGroup"
+                class="custom-exercise-group"
+                style="display: none"
+              >
+                <div class="input-group-modern">
+                  <div class="input-icon">✏️</div>
+                  <div class="input-wrapper">
+                    <label for="customExercise">Nom de l'exercice</label>
+                    <input
+                      type="text"
+                      id="customExercise"
+                      name="customExercise"
+                      placeholder="Ex: Développé couché incliné"
+                      autocomplete="off"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Selected Exercise Preview -->
+            <div
+              id="selectedExercisePreview"
+              class="selected-exercise-preview"
+              style="display: none"
+            >
+              <div class="preview-image-container">
+                <img
+                  id="previewExerciseImage"
+                  src=""
+                  alt=""
+                  class="preview-exercise-image"
+                />
+                <div
+                  id="previewExerciseIcon"
+                  class="preview-exercise-icon"
+                  style="display: none"
+                ></div>
+              </div>
+              <h3 id="previewExerciseName" class="preview-exercise-name"></h3>
+              <div
+                id="previewMuscleZone"
+                class="preview-muscle-zone"
+                style="display: none"
+              >
+                <span
+                  id="previewMuscleZoneIcon"
+                  class="preview-muscle-zone-icon"
+                ></span>
+                <span
+                  id="previewMuscleZoneText"
+                  class="preview-muscle-zone-text"
+                ></span>
+              </div>
+            </div>
+
+            <!-- Workout Details -->
+            <div class="workout-details-grid">
+              <div class="input-group-modern input-with-stepper">
+                <div class="input-icon">🏋️</div>
+                <div class="input-wrapper">
+                  <label for="weight">Poids (kg)</label>
+                  <div class="stepper-group">
+                    <button
+                      type="button"
+                      class="stepper-btn"
+                      data-target="weight"
+                      data-action="decrease"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      id="weight"
+                      name="weight"
+                      step="0.5"
+                      min="0"
+                      value="20"
+                      required
+                    />
+                    <button
+                      type="button"
+                      class="stepper-btn"
+                      data-target="weight"
+                      data-action="increase"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="input-group-modern input-with-stepper">
+                <div class="input-icon">🔄</div>
+                <div class="input-wrapper">
+                  <label for="reps">Répétitions</label>
+                  <div class="stepper-group">
+                    <button
+                      type="button"
+                      class="stepper-btn"
+                      data-target="reps"
+                      data-action="decrease"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      id="reps"
+                      name="reps"
+                      min="1"
+                      value="10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      class="stepper-btn"
+                      data-target="reps"
+                      data-action="increase"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="input-group-modern input-with-stepper">
+                <div class="input-icon">📊</div>
+                <div class="input-wrapper">
+                  <label for="sets">Séries</label>
+                  <div class="stepper-group">
+                    <button
+                      type="button"
+                      class="stepper-btn"
+                      data-target="sets"
+                      data-action="decrease"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      id="sets"
+                      name="sets"
+                      min="1"
+                      value="3"
+                      required
+                    />
+                    <button
+                      type="button"
+                      class="stepper-btn"
+                      data-target="sets"
+                      data-action="increase"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Volume Preview -->
+            <div id="volumePreview" class="volume-preview">
+              <span class="volume-label">Volume total:</span>
+              <span class="volume-value">0 kg</span>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-submit">
+              <span>💾 Enregistrer la séance</span>
+            </button>
+          </form>
+        </section>
+
+        <!-- Stats Display Section -->
+        <section class="stats-display-section">
+          <div class="section-header">
+            <h2>📊 Vos statistiques</h2>
+            <p>Consultez votre progression et votre évolution</p>
+          </div>
+
+          <!-- Exercise Filter -->
+          <div class="filter-section-modern">
+            <div class="filter-label">
+              <span>🔍 Filtrer:</span>
+            </div>
+            <div class="filter-buttons" id="filterButtons">
+              <button class="filter-btn active" data-filter="all">Tous</button>
+              <!-- Les filtres seront générés dynamiquement -->
+            </div>
+          </div>
+
+          <!-- Stats Cards -->
+          <div id="statsCards" class="stats-cards">
+            <!-- Les cartes de stats seront générées dynamiquement -->
+          </div>
+
+          <!-- Charts Section -->
+          <div id="chartsSection" class="charts-section" style="display: none">
+            <div class="section-header-small">
+              <h3>📈 Évolution des performances</h3>
+            </div>
+            <div class="chart-container">
+              <canvas id="progressChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Stats Table -->
+          <div id="statsTable" class="stats-table-container">
+            <div class="section-header-small">
+              <h3>📋 Historique complet</h3>
+            </div>
+            <div class="table-wrapper">
+              <table class="stats-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Exercice</th>
+                    <th>Poids</th>
+                    <th>Rép</th>
+                    <th>Séries</th>
+                    <th>Volume</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="statsTableBody">
+                  <!-- Les lignes seront générées dynamiquement -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div id="emptyState" class="empty-state">
+            <div class="empty-icon">🎯</div>
+            <h3>Aucune statistique enregistrée</h3>
+            <p>Commencez par ajouter votre première séance ci-dessus !</p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <p>&copy; 2024 NeoStats. Tous droits réservés.</p>
+      </div>
+    </footer>
+
+    <script src="js/exercise-images.js"></script>
+    <script src="js/exercise-muscle-zones.js"></script>
+    <script src="js/musculation.js"></script>
+  </body>
+</html>

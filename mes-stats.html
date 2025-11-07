@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mes Stats - NeoStats</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="container">
+        <div class="nav-brand">
+          <a href="index.html">
+            <h1>📊 NeoStats</h1>
+          </a>
+        </div>
+        <button
+          class="mobile-menu-toggle"
+          id="mobileMenuToggle"
+          aria-label="Menu"
+        >
+          ☰
+        </button>
+        <ul class="nav-menu" id="navMenu">
+          <li><a href="index.html">Accueil</a></li>
+          <li><a href="musculation.html">Musculation</a></li>
+          <li><a href="mes-stats.html" class="active">Mes Stats</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="container">
+        <div class="page-header">
+          <h1 class="page-title">📊 Mes Statistiques</h1>
+          <p class="page-subtitle">
+            Consultez toutes vos performances en détail
+          </p>
+        </div>
+
+        <!-- Filters Section -->
+        <section class="stats-filters-section">
+          <div class="section-header">
+            <h2>🔍 Filtres</h2>
+            <p>Filtrez vos statistiques pour une analyse précise</p>
+          </div>
+
+          <div class="filters-container">
+            <!-- Category Filter -->
+            <div class="filter-group">
+              <label class="filter-label">
+                <span class="filter-icon">💪</span>
+                Catégorie musculaire
+              </label>
+              <select id="categoryFilter" class="filter-select">
+                <option value="all">Toutes les catégories</option>
+              </select>
+            </div>
+
+            <!-- Exercise Filter -->
+            <div class="filter-group">
+              <label class="filter-label">
+                <span class="filter-icon">🏋️</span>
+                Exercice
+              </label>
+              <select id="exerciseFilter" class="filter-select">
+                <option value="all">Tous les exercices</option>
+              </select>
+            </div>
+
+            <!-- Date Range Filter -->
+            <div class="filter-group">
+              <label class="filter-label">
+                <span class="filter-icon">📅</span>
+                Période
+              </label>
+              <div class="date-range-group">
+                <input
+                  type="date"
+                  id="dateStart"
+                  class="filter-date-input"
+                  placeholder="Date de début"
+                />
+                <span class="date-separator">→</span>
+                <input
+                  type="date"
+                  id="dateEnd"
+                  class="filter-date-input"
+                  placeholder="Date de fin"
+                />
+              </div>
+            </div>
+
+            <!-- Clear Filters Button -->
+            <div class="filter-group filter-group-button">
+              <div class="filter-label filter-label-spacer">
+                <span class="filter-icon">⠀</span>
+                <span style="opacity: 0">Placeholder</span>
+              </div>
+              <button id="clearFilters" class="btn btn-secondary">
+                Effacer les filtres
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Stats Summary Cards -->
+        <section class="stats-summary-section">
+          <div class="stats-summary-grid">
+            <div class="summary-card">
+              <div class="summary-icon">💪</div>
+              <div class="summary-content">
+                <h3 class="summary-label">Total d'exercices</h3>
+                <p class="summary-value" id="totalExercises">0</p>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-icon">🏋️</div>
+              <div class="summary-content">
+                <h3 class="summary-label">Exercices différents</h3>
+                <p class="summary-value" id="totalDifferentExercises">0</p>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-icon">📊</div>
+              <div class="summary-content">
+                <h3 class="summary-label">Total de séries</h3>
+                <p class="summary-value" id="totalSets">0</p>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-icon">🔄</div>
+              <div class="summary-content">
+                <h3 class="summary-label">Total de répétitions</h3>
+                <p class="summary-value" id="totalReps">0</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Stats Table Section -->
+        <section class="stats-table-section">
+          <div class="section-header">
+            <h2>📋 Détails des exercices</h2>
+            <p>Toutes vos performances enregistrées</p>
+          </div>
+
+          <div class="stats-table-container">
+            <table class="stats-table" id="statsTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Catégorie</th>
+                  <th>Exercice</th>
+                  <th>Poids (kg)</th>
+                  <th>Répétitions</th>
+                  <th>Séries</th>
+                  <th>Volume (kg)</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="statsTableBody">
+                <!-- Les données seront injectées ici -->
+              </tbody>
+            </table>
+          </div>
+
+          <div id="emptyStatsMessage" class="empty-state" style="display: none">
+            <div class="empty-state-icon">📭</div>
+            <h3>Aucune statistique</h3>
+            <p>
+              Vous n'avez pas encore de statistiques enregistrées. Commencez par
+              ajouter un exercice dans la section Musculation.
+            </p>
+            <a href="musculation.html" class="btn btn-primary"
+              >Ajouter un exercice</a
+            >
+          </div>
+        </section>
+
+        <!-- Exercise Stats Section -->
+        <section class="exercise-stats-section">
+          <div class="section-header">
+            <h2>📊 Statistiques par exercice</h2>
+            <p>Analyse détaillée de chaque exercice</p>
+          </div>
+
+          <div id="exerciseStatsContainer" class="exercise-stats-grid">
+            <!-- Les cartes d'exercices seront injectées ici -->
+          </div>
+        </section>
+
+        <!-- Progress Charts Section -->
+        <section class="progress-charts-section">
+          <div class="section-header">
+            <h2>📈 Graphiques de progression</h2>
+            <p>Visualisez votre évolution dans le temps</p>
+          </div>
+
+          <div class="charts-container">
+            <div class="chart-card">
+              <h3>Progression du poids (kg)</h3>
+              <canvas id="weightChart"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3>Évolution du volume (kg)</h3>
+              <canvas id="volumeChart"></canvas>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <p>&copy; 2024 NeoStats. Tous droits réservés.</p>
+      </div>
+    </footer>
+
+    <script src="js/exercise-images.js"></script>
+    <script src="js/exercise-muscle-zones.js"></script>
+    <script src="js/musculation.js"></script>
+    <script src="js/mes-stats.js"></script>
+    <script>
+      // Listen for storage events to reload stats when updated from another page
+      // Note: storage event only fires in OTHER tabs/windows, not the current one
+      window.addEventListener("storage", function (e) {
+        if (e.key === "neostats_musculation") {
+          console.log("Storage updated, reloading stats...");
+          if (typeof loadAllStats === "function") {
+            loadAllStats();
+            if (typeof updateDisplay === "function") {
+              updateDisplay();
+            }
+          }
+        }
+      });
+
+      // Check for updates when page becomes visible (when coming back from another tab)
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden && typeof loadAllStats === "function") {
+          console.log("Page visible, reloading stats...");
+          loadAllStats();
+          if (typeof updateDisplay === "function") {
+            updateDisplay();
+          }
+        }
+      });
+
+      // Reload when page gets focus (useful when coming back from musculation page)
+      window.addEventListener("focus", function () {
+        if (typeof loadAllStats === "function") {
+          console.log("Page focused, reloading stats...");
+          loadAllStats();
+          if (typeof updateDisplay === "function") {
+            updateDisplay();
+          }
+        }
+      });
+
+      // Also add a manual refresh after page load to ensure stats are loaded
+      setTimeout(function () {
+        if (
+          typeof loadAllStats === "function" &&
+          typeof updateDisplay === "function"
+        ) {
+          console.log("Refresh after page load...");
+          loadAllStats();
+          updateDisplay();
+        }
+      }, 500);
+    </script>
+  </body>
+</html>
