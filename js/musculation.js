@@ -4,6 +4,7 @@ let progressChart = null;
 let selectedExercise = null;
 let selectedMuscleGroup = null;
 let favoriteExercises = [];
+let editingStatId = null; // ID de la stat en cours d'édition (null = mode création)
 
 // Muscle groups with icons
 const muscleGroups = {
@@ -188,7 +189,11 @@ const exercisesByGroup = {
       name: "Tirage vertical en supination à la machine Hammer Strength",
       icon: "⬇️",
     },
-    { name: "Tirage vertical prise large", icon: "⬇️" },
+    {
+      name: "Tirage vertical",
+      icon: "⬇️",
+      variants: ["poulie", "convergent"],
+    },
     { name: "Tirage vertical prise inversée", icon: "⬇️" },
     { name: "Pull-over décliné à la barre", icon: "📉" },
     { name: "Planche inversée", icon: "🤸" },
@@ -320,8 +325,126 @@ const exercisesByGroup = {
 // Make muscleGroups globally accessible for mes-stats.js
 window.muscleGroups = muscleGroups;
 
+// Current sort/filter state
+let currentSortFilter = {
+  sort: "alphabetic-asc", // alphabetic-asc, alphabetic-desc
+  filter: "all", // all, poulie, machine, poidsDeCorps, sansMateriel, favoris
+};
+
+// Setup exercise sort/filter
+function setupExerciseSortFilter() {
+  const buttons = document.querySelectorAll(".sort-filter-btn");
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", function () {
+      // Remove active class from all buttons
+      buttons.forEach((b) => b.classList.remove("active"));
+
+      // Add active class to clicked button
+      this.classList.add("active");
+
+      // Update sort/filter state
+      if (this.dataset.sort) {
+        currentSortFilter.sort = this.dataset.sort;
+        currentSortFilter.filter = "all";
+        // Update filter button states
+        updateSortFilterButtons();
+      } else if (this.dataset.filter) {
+        currentSortFilter.filter = this.dataset.filter;
+        // If filtering by equipment, keep current sort
+        updateSortFilterButtons();
+      }
+
+      // Re-display exercises with new sort/filter
+      if (selectedMuscleGroup) {
+        showExercisesForGroup(selectedMuscleGroup);
+      }
+    });
+  });
+}
+
+// Update sort/filter button states
+function updateSortFilterButtons() {
+  const buttons = document.querySelectorAll(".sort-filter-btn");
+  buttons.forEach((btn) => {
+    btn.classList.remove("active");
+    if (
+      btn.dataset.sort === currentSortFilter.sort &&
+      currentSortFilter.filter === "all"
+    ) {
+      btn.classList.add("active");
+    } else if (btn.dataset.filter === currentSortFilter.filter) {
+      btn.classList.add("active");
+    }
+  });
+}
+
+// Apply sort/filter to exercises
+function applyExerciseSortFilter(exercises, muscleGroupKey) {
+  let filtered = [...exercises];
+
+  // Apply filter
+  if (currentSortFilter.filter !== "all") {
+    if (currentSortFilter.filter === "favoris") {
+      // Filter by favorites
+      filtered = filtered.filter((exercise) => {
+        const exerciseGroupKey = exercise.originalGroup || muscleGroupKey;
+        return isExerciseFavorite(exercise.name, exerciseGroupKey);
+      });
+    } else {
+      // Apply equipment filter
+      filtered = filtered.filter((exercise) => {
+        if (typeof getExerciseEquipment === "function") {
+          // Use originalGroup for favorites, otherwise use muscleGroupKey
+          const groupKey = exercise.originalGroup || muscleGroupKey;
+          const equipment = getExerciseEquipment(exercise.name, groupKey);
+          return equipment[currentSortFilter.filter] === true;
+        }
+        return true;
+      });
+    }
+  }
+
+  // Apply sort
+  filtered.sort((a, b) => {
+    // For favorites category or when filtering by favorites, just sort alphabetically
+    if (
+      muscleGroupKey === "favoris" ||
+      currentSortFilter.filter === "favoris"
+    ) {
+      if (currentSortFilter.sort === "alphabetic-asc") {
+        return a.name.localeCompare(b.name, "fr", { sensitivity: "base" });
+      } else if (currentSortFilter.sort === "alphabetic-desc") {
+        return b.name.localeCompare(a.name, "fr", { sensitivity: "base" });
+      }
+      return 0;
+    }
+
+    // For other categories, favorites first, then sort
+    const aGroupKey = a.originalGroup || muscleGroupKey;
+    const bGroupKey = b.originalGroup || muscleGroupKey;
+    const aIsFavorite = isExerciseFavorite(a.name, aGroupKey);
+    const bIsFavorite = isExerciseFavorite(b.name, bGroupKey);
+
+    // Favorites always first (only if not filtering by favorites)
+    if (aIsFavorite && !bIsFavorite) return -1;
+    if (!aIsFavorite && bIsFavorite) return 1;
+
+    // Then apply sort
+    if (currentSortFilter.sort === "alphabetic-asc") {
+      return a.name.localeCompare(b.name, "fr", { sensitivity: "base" });
+    } else if (currentSortFilter.sort === "alphabetic-desc") {
+      return b.name.localeCompare(a.name, "fr", { sensitivity: "base" });
+    }
+
+    return 0;
+  });
+
+  return filtered;
+}
+
 // Initialize
 document.addEventListener("DOMContentLoaded", function () {
+  // Load data first
   loadStats();
   loadFavoriteExercises();
 
@@ -336,14 +459,19 @@ document.addEventListener("DOMContentLoaded", function () {
   if (addStatsForm) {
     setupForm();
     setupSteppers();
-    setupVolumePreview();
     updateVolumePreview(); // Initialize volume display
   }
 
   // Only setup display if elements exist (musculation.html only)
   const statsCards = document.getElementById("statsCards");
   if (statsCards) {
+    // Update display immediately
     updateDisplay();
+
+    // Also update after a short delay to ensure everything is loaded
+    setTimeout(function () {
+      updateDisplay();
+    }, 100);
   }
 
   // Only setup filter buttons if they exist (musculation.html only)
@@ -351,10 +479,46 @@ document.addEventListener("DOMContentLoaded", function () {
   if (filterButtons) {
     setupFilterButtons();
   }
+
+  // Only setup exercise sort/filter if it exists (musculation.html only)
+  const exerciseSortFilter = document.getElementById("exerciseSortFilter");
+  if (exerciseSortFilter) {
+    setupExerciseSortFilter();
+  }
+
   // S'assurer que les images sont chargées
   if (typeof loadExerciseImages === "function") {
     loadExerciseImages();
   }
+
+  // Listen for storage events (when data is updated from another tab/window)
+  window.addEventListener("storage", function (e) {
+    if (e.key === "neostats_musculation") {
+      console.log("Storage updated, reloading stats...");
+      loadStats();
+      if (statsCards) {
+        updateDisplay();
+      }
+    }
+  });
+
+  // Also reload when page becomes visible (when coming back from another tab)
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && statsCards) {
+      console.log("Page visible, reloading stats...");
+      loadStats();
+      updateDisplay();
+    }
+  });
+
+  // Reload when page gets focus
+  window.addEventListener("focus", function () {
+    if (statsCards) {
+      console.log("Page focused, reloading stats...");
+      loadStats();
+      updateDisplay();
+    }
+  });
 });
 
 // Load favorite exercises from localStorage
@@ -472,6 +636,12 @@ function setupMuscleGroupGrid() {
       this.classList.add("selected");
       selectedMuscleGroup = key;
 
+      // Reset sort/filter to default when changing muscle group (except for favorites)
+      if (key !== "favoris") {
+        currentSortFilter.sort = "alphabetic-asc";
+        currentSortFilter.filter = "all";
+      }
+
       // Show exercises for this muscle group
       showExercisesForGroup(key);
     });
@@ -548,18 +718,33 @@ function showExercisesForGroup(muscleGroupKey) {
     groupIcon = group.icon;
     exercises = exercisesByGroup[muscleGroupKey] || [];
 
-    // Trier les exercices : favoris en premier
+    // Trier les exercices : favoris en premier, puis alphabétique A->Z par défaut
     exercises.sort((a, b) => {
       const aIsFavorite = isExerciseFavorite(a.name, muscleGroupKey);
       const bIsFavorite = isExerciseFavorite(b.name, muscleGroupKey);
 
       if (aIsFavorite && !bIsFavorite) return -1;
       if (!aIsFavorite && bIsFavorite) return 1;
-      return 0; // Garder l'ordre original si même statut favori
+      // Si même statut favori, trier alphabétiquement A->Z
+      return a.name.localeCompare(b.name, "fr", { sensitivity: "base" });
     });
   }
 
+  // Apply current sort/filter
+  exercises = applyExerciseSortFilter(exercises, muscleGroupKey);
+
   exerciseSectionLabel.textContent = `${groupIcon} Choisissez un exercice - ${groupName}`;
+
+  // Show/hide sort/filter controls (hide for favorites)
+  const sortFilterControls = document.getElementById("exerciseSortFilter");
+  if (sortFilterControls) {
+    if (muscleGroupKey === "favoris") {
+      sortFilterControls.style.display = "none";
+    } else {
+      sortFilterControls.style.display = "flex";
+      updateSortFilterButtons();
+    }
+  }
 
   exercises.forEach((exercise) => {
     const card = document.createElement("div");
@@ -969,6 +1154,17 @@ function showExerciseVariantSelector(exercise, muscleGroupKey) {
 
   // Configurer le modal pour cet exercice
   document.getElementById("variantSelectorTitle").textContent = exercise.name;
+  const descriptionEl = document.getElementById("variantSelectorDescription");
+  if (descriptionEl) {
+    // Adapter la description selon l'exercice
+    if (exercise.name === "Tirage vertical") {
+      descriptionEl.textContent =
+        "Sélectionnez le type de machine pour cibler une zone spécifique";
+    } else {
+      descriptionEl.textContent =
+        "Sélectionnez la position de la poulie pour cibler une zone spécifique";
+    }
+  }
   const optionsContainer = document.getElementById("variantSelectorOptions");
   optionsContainer.innerHTML = "";
 
@@ -989,6 +1185,16 @@ function showExerciseVariantSelector(exercise, muscleGroupKey) {
       label: "Bas des pectoraux",
       icon: "⬇️",
       description: "Poulie en haut",
+    },
+    poulie: {
+      label: "Tirage vertical à la poulie",
+      icon: "⬇️",
+      description: "Machine à poulie",
+    },
+    convergent: {
+      label: "Tirage vertical convergent",
+      icon: "⬇️",
+      description: "Machine convergente",
     },
   };
 
@@ -1159,29 +1365,274 @@ function addStat() {
     return;
   }
 
-  const stat = {
-    id: Date.now(),
-    date: date,
-    exercise: exercise,
-    muscleGroup: selectedMuscleGroup || null,
-    weight: weight,
-    reps: reps,
-    sets: sets,
-    volume: weight * reps * sets,
-  };
+  // Check if we're in edit mode
+  if (editingStatId !== null) {
+    // Update existing stat
+    const statIndex = stats.findIndex((s) => s.id === editingStatId);
+    if (statIndex !== -1) {
+      stats[statIndex] = {
+        id: editingStatId, // Keep original ID
+        date: date,
+        exercise: exercise,
+        muscleGroup: selectedMuscleGroup || null,
+        weight: weight,
+        reps: reps,
+        sets: sets,
+        // Volume is not saved - only displayed in form
+      };
+      saveStats();
+      updateDisplay();
+      showNotification("Exercice modifié avec succès ! 💪", "success");
 
-  stats.push(stat);
-  saveStats();
-  updateDisplay();
+      // Reset edit mode
+      cancelEdit();
+    } else {
+      showNotification("Erreur : Statistique introuvable", "error");
+    }
+  } else {
+    // Create new stat
+    const stat = {
+      id: Date.now(),
+      date: date,
+      exercise: exercise,
+      muscleGroup: selectedMuscleGroup || null,
+      weight: weight,
+      reps: reps,
+      sets: sets,
+      // Volume is not saved - only displayed in form
+    };
+
+    stats.push(stat);
+    saveStats();
+    updateDisplay();
+
+    // Reset form
+    form.reset();
+    document.getElementById("date").value = new Date()
+      .toISOString()
+      .split("T")[0];
+    document.getElementById("weight").value = 20;
+    document.getElementById("reps").value = 10;
+    document.getElementById("sets").value = 3;
+    selectedExercise = null;
+    selectedMuscleGroup = null;
+    document.querySelectorAll(".exercise-card").forEach((c) => {
+      c.classList.remove("selected");
+    });
+    document.querySelectorAll(".muscle-group-card").forEach((c) => {
+      c.classList.remove("selected");
+    });
+    document.getElementById("exerciseSelectionSection").style.display = "none";
+    document.getElementById("customExerciseGroup").style.display = "none";
+    hideSelectedExercisePreview();
+    updateVolumePreview();
+
+    showNotification("Exercice enregistré avec succès ! 💪", "success");
+  }
+}
+
+// Edit stat - Pre-fill form with stat data
+function editStat(id) {
+  const stat = stats.find((s) => s.id === id);
+  if (!stat) {
+    showNotification("Statistique introuvable", "error");
+    return;
+  }
+
+  // Set editing mode
+  editingStatId = id;
+
+  // Scroll to form
+  document.getElementById("addStatsForm").scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+
+  // Pre-select muscle group
+  const muscleGroup = stat.muscleGroup || null;
+  selectedMuscleGroup = muscleGroup;
+
+  // Show exercise selection section
+  document.getElementById("exerciseSelectionSection").style.display = "block";
+
+  // Update muscle group selection UI and trigger exercise display
+  if (muscleGroup) {
+    const muscleGroupCard = document.querySelector(
+      `.muscle-group-card[data-muscle-group="${muscleGroup}"]`
+    );
+    if (muscleGroupCard) {
+      // Remove previous selections
+      document.querySelectorAll(".muscle-group-card").forEach((c) => {
+        c.classList.remove("selected");
+      });
+
+      // Select the muscle group card
+      muscleGroupCard.classList.add("selected");
+
+      // Trigger click to show exercises for this group
+      muscleGroupCard.click();
+    }
+  }
+
+  // Wait for exercises to be displayed, then pre-select the exercise
+  setTimeout(() => {
+    // Pre-select exercise
+    selectedExercise = stat.exercise;
+
+    // Find and select the exercise card
+    const exerciseCards = document.querySelectorAll(".exercise-card");
+    let exerciseFound = false;
+
+    exerciseCards.forEach((card) => {
+      const exerciseName = card
+        .querySelector(".exercise-name")
+        ?.textContent.trim();
+
+      // Check if this is the exercise we're looking for
+      // Also check if it's a base exercise name (without variant in parentheses)
+      const baseExerciseName = stat.exercise.split(" (")[0];
+      const matchesExact = exerciseName === stat.exercise;
+      const matchesBase = exerciseName === baseExerciseName;
+
+      if (matchesExact || matchesBase) {
+        card.classList.add("selected");
+        selectedExercise = stat.exercise; // Use the exact saved name
+
+        // Check if the exercise has variants
+        const exerciseData = exercisesByGroup[muscleGroup]?.find(
+          (e) => e.name === exerciseName || e.name === baseExerciseName
+        );
+
+        // Don't trigger click in edit mode - manually update preview instead
+        // This prevents the variant selector from opening when editing
+        if (
+          exerciseData &&
+          exerciseData.variants &&
+          exerciseData.variants.length > 0
+        ) {
+          // Exercise has variants - update preview with the saved exercise name
+          // The preview will show the correct variant info if it was saved
+          updateSelectedExercisePreview(
+            stat.exercise,
+            muscleGroup,
+            exerciseData.icon
+          );
+        } else {
+          // No variants, update preview directly
+          updateSelectedExercisePreview(
+            exerciseName,
+            muscleGroup,
+            exerciseData?.icon || "💪"
+          );
+        }
+
+        exerciseFound = true;
+      } else {
+        card.classList.remove("selected");
+      }
+    });
+
+    // If exercise is "Autre", show custom input
+    if (stat.exercise === "Autre") {
+      document.getElementById("customExerciseGroup").style.display = "block";
+      const customExerciseInput = document.getElementById("customExercise");
+      if (customExerciseInput) {
+        customExerciseInput.value = stat.exercise;
+        customExerciseInput.required = true;
+      }
+      // Also need to update the preview manually for "Autre"
+      selectedExercise = "Autre";
+      hideSelectedExercisePreview(); // Hide preview for "Autre"
+    }
+
+    // If exercise not found in cards, it might be a custom exercise or variant
+    if (!exerciseFound && stat.exercise !== "Autre") {
+      // Try to find by base name and update preview manually
+      const baseName = stat.exercise.split(" (")[0];
+      const exerciseData = exercisesByGroup[muscleGroup]?.find(
+        (e) => e.name === baseName || e.name === stat.exercise
+      );
+
+      if (exerciseData) {
+        // Found the exercise data, update preview manually
+        updateSelectedExercisePreview(
+          stat.exercise,
+          muscleGroup,
+          exerciseData.icon
+        );
+        selectedExercise = stat.exercise;
+      } else {
+        console.warn("Exercise not found in cards:", stat.exercise);
+        // Still set it as selected so the form can work
+        selectedExercise = stat.exercise;
+      }
+    }
+  }, 300); // Increased delay to ensure exercises are loaded
+
+  // Pre-fill form fields
+  document.getElementById("date").value = stat.date;
+  document.getElementById("weight").value = stat.weight;
+  document.getElementById("reps").value = stat.reps;
+  document.getElementById("sets").value = stat.sets;
+
+  // Update volume preview
+  updateVolumePreview();
+
+  // Update form title and button
+  const formTitle = document.querySelector(
+    ".add-stats-section .section-header h2"
+  );
+  if (formTitle) {
+    formTitle.textContent = "✏️ Modifier l'exercice";
+  }
+
+  const submitButton = document.querySelector(".btn-submit");
+  if (submitButton) {
+    submitButton.innerHTML = "<span>💾 Enregistrer les modifications</span>";
+  }
+
+  // Show cancel button if it doesn't exist
+  let cancelButton = document.getElementById("cancelEditButton");
+  if (!cancelButton) {
+    cancelButton = document.createElement("button");
+    cancelButton.type = "button";
+    cancelButton.id = "cancelEditButton";
+    cancelButton.className = "btn btn-secondary";
+    cancelButton.innerHTML = "<span>❌ Annuler</span>";
+    cancelButton.style.marginLeft = "0.5rem";
+    cancelButton.onclick = cancelEdit;
+
+    const submitBtnContainer =
+      document.querySelector(".btn-submit")?.parentNode;
+    if (submitBtnContainer) {
+      submitBtnContainer.appendChild(cancelButton);
+    }
+  }
+  cancelButton.style.display = "inline-block";
+
+  showNotification(
+    "Modification en cours... Modifiez les champs puis enregistrez",
+    "info"
+  );
+}
+
+// Cancel edit mode
+function cancelEdit() {
+  editingStatId = null;
 
   // Reset form
-  form.reset();
-  document.getElementById("date").value = new Date()
-    .toISOString()
-    .split("T")[0];
-  document.getElementById("weight").value = 20;
-  document.getElementById("reps").value = 10;
-  document.getElementById("sets").value = 3;
+  const form = document.getElementById("addStatsForm");
+  if (form) {
+    form.reset();
+    document.getElementById("date").value = new Date()
+      .toISOString()
+      .split("T")[0];
+    document.getElementById("weight").value = 20;
+    document.getElementById("reps").value = 10;
+    document.getElementById("sets").value = 3;
+  }
+
+  // Reset selections
   selectedExercise = null;
   selectedMuscleGroup = null;
   document.querySelectorAll(".exercise-card").forEach((c) => {
@@ -1195,7 +1646,26 @@ function addStat() {
   hideSelectedExercisePreview();
   updateVolumePreview();
 
-  showNotification("Exercice enregistré avec succès ! 💪", "success");
+  // Update form title and button
+  const formTitle = document.querySelector(
+    ".add-stats-section .section-header h2"
+  );
+  if (formTitle) {
+    formTitle.textContent = "➕ Nouvel exercice";
+  }
+
+  const submitButton = document.querySelector(".btn-submit");
+  if (submitButton) {
+    submitButton.innerHTML = "<span>💾 Enregistrer l'exercice</span>";
+  }
+
+  // Hide cancel button
+  const cancelButton = document.getElementById("cancelEditButton");
+  if (cancelButton) {
+    cancelButton.style.display = "none";
+  }
+
+  showNotification("Modification annulée", "info");
 }
 
 // Delete stat
@@ -1205,6 +1675,11 @@ function deleteStat(id) {
     saveStats();
     updateDisplay();
     showNotification("Statistique supprimée", "success");
+
+    // If we were editing this stat, cancel edit mode
+    if (editingStatId === id) {
+      cancelEdit();
+    }
   }
 }
 
@@ -1215,9 +1690,22 @@ function saveStats() {
 
 // Load stats from localStorage
 function loadStats() {
-  const saved = localStorage.getItem("neostats_musculation");
-  if (saved) {
-    stats = JSON.parse(saved);
+  try {
+    const saved = localStorage.getItem("neostats_musculation");
+    if (saved) {
+      stats = JSON.parse(saved);
+      // Ensure stats is an array
+      if (!Array.isArray(stats)) {
+        stats = [];
+      }
+      console.log("Stats loaded:", stats.length, "exercices");
+    } else {
+      stats = [];
+      console.log("No stats found in localStorage");
+    }
+  } catch (error) {
+    console.error("Error loading stats:", error);
+    stats = [];
   }
 }
 
@@ -1231,6 +1719,10 @@ function updateDisplay() {
 
   const statsCards = document.getElementById("statsCards");
   if (statsCards) {
+    // Reload stats first to ensure we have the latest data
+    loadStats();
+
+    // Then update all displays
     updateStatsCards();
     updateStatsTable();
     updateCharts();
@@ -1342,7 +1834,6 @@ function updateStatsCards() {
     const latestStat = sortedStats[sortedStats.length - 1];
     const firstStat = sortedStats[0];
     const maxWeight = Math.max(...exerciseStats.map((s) => s.weight));
-    const totalVolume = exerciseStats.reduce((sum, s) => sum + s.volume, 0);
     const improvement = latestStat.weight - firstStat.weight;
     const improvementPercent =
       firstStat.weight > 0
@@ -1381,10 +1872,6 @@ function updateStatsCards() {
       1
     )} kg (${improvementPercent}%)
         </span>
-      </div>
-      <div class="stat-item">
-        <span>Volume total</span>
-        <span class="stat-value">${totalVolume.toFixed(0)} kg</span>
       </div>
       <div class="stat-item">
         <span>Exercices</span>
@@ -1427,11 +1914,11 @@ function updateStatsTable() {
       <td>${stat.weight} kg</td>
       <td>${stat.reps}</td>
       <td>${stat.sets}</td>
-      <td><strong>${stat.volume.toFixed(0)} kg</strong></td>
       <td>
-        <button class="btn btn-danger" onclick="deleteStat(${
-          stat.id
-        })">Supprimer</button>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn btn-secondary" onclick="editStat(${stat.id})" style="padding: 0.5rem 1rem; font-size: 0.875rem;">✏️ Modifier</button>
+          <button class="btn btn-danger" onclick="deleteStat(${stat.id})" style="padding: 0.5rem 1rem; font-size: 0.875rem;">🗑️ Supprimer</button>
+        </div>
       </td>
     `;
     tbody.appendChild(row);
@@ -1463,7 +1950,6 @@ function updateCharts() {
     exerciseData[stat.exercise].push({
       date: stat.date,
       weight: stat.weight,
-      volume: stat.volume,
     });
   });
 
@@ -1587,78 +2073,432 @@ function toggleEmptyState() {
   const statsCards = document.getElementById("statsCards");
   const statsTable = document.getElementById("statsTable");
   const chartsSection = document.getElementById("chartsSection");
+  const emptyStateTitle = emptyState?.querySelector("h3");
+  const emptyStateMessage = emptyState?.querySelector("p");
+  const emptyStateButton = emptyState?.querySelector(".refresh-button");
 
-  if (stats.length === 0) {
-    emptyState.style.display = "block";
-    statsCards.style.display = "none";
-    statsTable.style.display = "none";
-    chartsSection.style.display = "none";
+  // Check if stats array exists and has items
+  const hasStats = Array.isArray(stats) && stats.length > 0;
+
+  if (!hasStats) {
+    // Show empty state
+    if (emptyState) {
+      emptyState.style.display = "block";
+
+      // Update message to indicate no exercises
+      if (emptyStateTitle) {
+        emptyStateTitle.textContent = "🎯 Aucune statistique enregistrée";
+      }
+      if (emptyStateMessage) {
+        emptyStateMessage.textContent =
+          "Commencez par ajouter votre premier exercice ci-dessus !";
+      }
+    }
+
+    if (statsCards) {
+      statsCards.style.display = "none";
+    }
+    if (statsTable) {
+      statsTable.style.display = "none";
+    }
+    if (chartsSection) {
+      chartsSection.style.display = "none";
+    }
   } else {
-    emptyState.style.display = "none";
-    statsCards.style.display = "grid";
-    statsTable.style.display = "block";
+    // Hide empty state, show stats
+    if (emptyState) {
+      emptyState.style.display = "none";
+    }
+    if (statsCards) {
+      statsCards.style.display = "grid";
+    }
+    if (statsTable) {
+      statsTable.style.display = "block";
+    }
   }
+}
+
+// Refresh stats manually
+function refreshStats() {
+  console.log("Manual refresh triggered");
+  loadStats();
+  updateDisplay();
+
+  // Show feedback
+  if (stats.length === 0) {
+    showNotification(
+      "Aucun exercice trouvé dans les données sauvegardées",
+      "info"
+    );
+  } else {
+    showNotification(
+      `${stats.length} exercice(s) chargé(s) avec succès`,
+      "success"
+    );
+  }
+}
+
+// Export/Import functionality
+const SECRET_PASSWORD = "NeoStats59";
+let currentAction = null; // 'export' or 'import'
+
+// Show password modal
+function showPasswordModal(action) {
+  currentAction = action;
+  const modal = document.getElementById("passwordModal");
+  const title = document.getElementById("passwordModalTitle");
+  const message = document.getElementById("passwordModalMessage");
+  const error = document.getElementById("passwordError");
+  const input = document.getElementById("passwordInput");
+
+  if (action === "export") {
+    title.textContent = "🔒 Exporter les statistiques";
+    message.textContent =
+      "Veuillez entrer le mot de passe pour exporter vos statistiques";
+  } else if (action === "import") {
+    title.textContent = "🔒 Importer les statistiques";
+    message.textContent =
+      "Veuillez entrer le mot de passe pour importer des statistiques";
+  }
+
+  error.style.display = "none";
+  input.value = "";
+  modal.style.display = "flex";
+  input.focus();
+
+  // Allow Enter key to submit
+  input.onkeydown = function (e) {
+    if (e.key === "Enter") {
+      handlePasswordSubmit();
+    } else if (e.key === "Escape") {
+      closePasswordModal();
+    }
+  };
+
+  // Close modal when clicking outside
+  modal.onclick = function (e) {
+    if (e.target === modal) {
+      closePasswordModal();
+    }
+  };
+}
+
+// Close password modal
+function closePasswordModal() {
+  const modal = document.getElementById("passwordModal");
+  const error = document.getElementById("passwordError");
+  const input = document.getElementById("passwordInput");
+
+  modal.style.display = "none";
+  error.style.display = "none";
+  input.value = "";
+  currentAction = null;
+}
+
+// Handle password submit
+function handlePasswordSubmit() {
+  console.log("handlePasswordSubmit called, currentAction:", currentAction);
+  const input = document.getElementById("passwordInput");
+  const error = document.getElementById("passwordError");
+
+  if (!input) {
+    console.error("Password input not found!");
+    return;
+  }
+
+  const password = input.value.trim();
+  console.log("Password entered:", password ? "***" : "empty");
+
+  if (password !== SECRET_PASSWORD) {
+    error.textContent = "❌ Mot de passe incorrect";
+    error.style.display = "block";
+    input.value = "";
+    input.focus();
+    return;
+  }
+
+  // Password is correct - Save action before closing modal (which resets currentAction)
+  const action = currentAction;
+  console.log("Password correct, executing action:", action);
+
+  // Close modal first
+  closePasswordModal();
+
+  // Execute action after closing modal
+  if (action === "export") {
+    console.log("Calling exportStats()");
+    setTimeout(() => {
+      exportStats();
+    }, 100);
+  } else if (action === "import") {
+    console.log("Triggering file input");
+    setTimeout(() => {
+      const fileInput = document.getElementById("importFileInput");
+      if (fileInput) {
+        fileInput.click();
+      } else {
+        console.error("File input not found!");
+        showNotification(
+          "❌ Erreur : Impossible d'accéder au sélecteur de fichier",
+          "error"
+        );
+      }
+    }, 100);
+  } else {
+    console.error("Unknown action:", action);
+    showNotification("❌ Erreur : Action inconnue", "error");
+  }
+}
+
+// Make functions globally accessible
+window.showPasswordModal = showPasswordModal;
+window.handlePasswordSubmit = handlePasswordSubmit;
+window.closePasswordModal = closePasswordModal;
+window.handleFileImport = handleFileImport;
+
+// Export stats to JSON file
+function exportStats() {
+  console.log("exportStats() called");
+  try {
+    // Get current stats
+    loadStats();
+    console.log("Stats loaded:", stats.length);
+
+    // Create export data object
+    const exportData = {
+      version: "1.0",
+      exportDate: new Date().toISOString(),
+      stats: stats,
+      favoriteExercises: favoriteExercises || [],
+    };
+
+    // Convert to JSON string
+    const jsonString = JSON.stringify(exportData, null, 2);
+
+    // Create blob and download
+    console.log("Creating blob and downloading...");
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `neostats-export-${
+      new Date().toISOString().split("T")[0]
+    }.json`;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    console.log("Triggering download...");
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      console.log("Download completed");
+    }, 100);
+
+    showNotification(
+      `✅ ${stats.length} exercice(s) exporté(s) avec succès !`,
+      "success"
+    );
+  } catch (error) {
+    console.error("Error exporting stats:", error);
+    showNotification("❌ Erreur lors de l'export des statistiques", "error");
+  }
+}
+
+// Handle file import
+function handleFileImport(event) {
+  console.log("handleFileImport called");
+  const file = event.target.files[0];
+  if (!file) {
+    console.log("No file selected");
+    return;
+  }
+  console.log("File selected:", file.name, file.type);
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const fileContent = e.target.result;
+      const importData = JSON.parse(fileContent);
+
+      // Validate import data structure
+      if (!validateImportData(importData)) {
+        showNotification(
+          "❌ Fichier invalide : Format de données incorrect",
+          "error"
+        );
+        return;
+      }
+
+      // Ask for confirmation
+      const statsCount = importData.stats ? importData.stats.length : 0;
+      const currentStatsCount = stats.length;
+      const confirmMessage = `⚠️ ATTENTION : Cette action va ÉCRASER toutes vos statistiques actuelles (${currentStatsCount} exercice(s)) et les remplacer par celles du fichier (${statsCount} exercice(s)).\n\nÊtes-vous sûr de vouloir continuer ?`;
+
+      if (!confirm(confirmMessage)) {
+        showNotification("Import annulé", "info");
+        return;
+      }
+
+      // Import stats
+      if (importData.stats && Array.isArray(importData.stats)) {
+        stats = importData.stats;
+
+        // Validate each stat has required fields
+        stats = stats.filter((stat) => {
+          return (
+            stat.id &&
+            stat.date &&
+            stat.exercise &&
+            typeof stat.weight === "number" &&
+            typeof stat.reps === "number" &&
+            typeof stat.sets === "number"
+          );
+        });
+
+        // Volume is no longer stored in stats - only displayed in form
+
+        // Save to localStorage
+        saveStats();
+
+        // Import favorite exercises if available
+        if (
+          importData.favoriteExercises &&
+          Array.isArray(importData.favoriteExercises)
+        ) {
+          favoriteExercises = importData.favoriteExercises;
+          saveFavoriteExercises();
+        }
+
+        // Update display
+        updateDisplay();
+
+        showNotification(
+          `✅ ${stats.length} exercice(s) importé(s) avec succès !`,
+          "success"
+        );
+      } else {
+        showNotification(
+          "❌ Erreur : Aucune statistique valide dans le fichier",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Error importing stats:", error);
+      showNotification(
+        "❌ Erreur lors de l'import : Fichier JSON invalide",
+        "error"
+      );
+    }
+  };
+
+  reader.onerror = function () {
+    showNotification("❌ Erreur lors de la lecture du fichier", "error");
+  };
+
+  reader.readAsText(file);
+
+  // Reset file input
+  event.target.value = "";
+}
+
+// Validate import data structure
+function validateImportData(data) {
+  if (!data || typeof data !== "object") {
+    return false;
+  }
+
+  // Check if stats array exists
+  if (!data.stats || !Array.isArray(data.stats)) {
+    return false;
+  }
+
+  // Check if stats array is not empty and has valid structure
+  if (data.stats.length > 0) {
+    const firstStat = data.stats[0];
+    if (
+      !firstStat.hasOwnProperty("id") ||
+      !firstStat.hasOwnProperty("date") ||
+      !firstStat.hasOwnProperty("exercise") ||
+      !firstStat.hasOwnProperty("weight") ||
+      !firstStat.hasOwnProperty("reps") ||
+      !firstStat.hasOwnProperty("sets")
+    ) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // Show notification
 function showNotification(message, type = "info") {
+  // Remove any existing notifications first to avoid stacking
+  const existingNotifications = document.querySelectorAll(
+    ".notification-dynamic"
+  );
+  existingNotifications.forEach((notif) => {
+    // Clear any pending timeouts
+    if (notif.dataset.timeoutId) {
+      clearTimeout(parseInt(notif.dataset.timeoutId));
+    }
+    if (notif.dataset.removeTimeoutId) {
+      clearTimeout(parseInt(notif.dataset.removeTimeoutId));
+    }
+    notif.remove();
+  });
+
   // Create notification element
   const notification = document.createElement("div");
-  notification.className = `notification notification-${type}`;
+  notification.className = `notification-dynamic notification-${type}`;
+
+  // Set background color based on type
   const bgColor =
     type === "success" ? "#2ed573" : type === "error" ? "#ff4757" : "#ff6b35";
-  notification.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: ${bgColor};
-    color: white;
-    padding: 1rem 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    z-index: 10000;
-    animation: slideInRight 0.3s ease-out;
-    font-weight: 600;
-    max-width: 300px;
-  `;
-  notification.textContent = message;
 
+  // Set base styles (position, colors, etc.)
+  notification.style.position = "fixed";
+  notification.style.top = "20px";
+  notification.style.right = "20px";
+  notification.style.background = bgColor;
+  notification.style.color = "white";
+  notification.style.padding = "1rem 1.5rem";
+  notification.style.borderRadius = "12px";
+  notification.style.boxShadow = "0 10px 30px rgba(0, 0, 0, 0.5)";
+  notification.style.zIndex = "10000";
+  notification.style.fontWeight = "600";
+  notification.style.maxWidth = "300px";
+  notification.style.wordWrap = "break-word";
+
+  // Set initial state (hidden, off-screen)
+  notification.style.opacity = "0";
+  notification.style.transform = "translateX(100%)";
+
+  notification.textContent = message;
   document.body.appendChild(notification);
 
-  // Remove after 3 seconds
-  setTimeout(() => {
-    notification.style.animation = "slideOutRight 0.3s ease-out";
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification);
-      }
-    }, 300);
-  }, 3000);
-}
+  // Trigger entrance animation on next frame
+  requestAnimationFrame(() => {
+    notification.style.transition =
+      "opacity 0.4s ease-out, transform 0.4s ease-out";
+    notification.style.opacity = "1";
+    notification.style.transform = "translateX(0)";
+  });
 
-// Add animation styles
-const style = document.createElement("style");
-style.textContent = `
-  @keyframes slideInRight {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes slideOutRight {
-    from {
-      transform: translateX(0);
-      opacity: 1;
-    }
-    to {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-  }
-`;
-document.head.appendChild(style);
+  // Set timeout to start exit animation after 3.5 seconds (3s visible + 0.5s buffer)
+  const exitTimeoutId = setTimeout(() => {
+    notification.style.opacity = "0";
+    notification.style.transform = "translateX(100%)";
+
+    // Remove from DOM after transition completes (0.4s)
+    const removeTimeoutId = setTimeout(() => {
+      if (document.body.contains(notification)) {
+        notification.remove();
+      }
+    }, 400);
+
+    notification.dataset.removeTimeoutId = removeTimeoutId;
+  }, 3500);
+
+  // Store timeout ID
+  notification.dataset.timeoutId = exitTimeoutId;
+}

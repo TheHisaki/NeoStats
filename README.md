@@ -2,83 +2,91 @@
 
 Un site web moderne et élégant pour suivre votre évolution sportive. Enregistrez vos performances, visualisez votre progression et atteignez vos objectifs !
 
-## ✨ Fonctionnalités
+## 🎯 Qu'est-ce que NeoStats ?
 
-- **Page d'accueil** : Design moderne avec animations et présentation des fonctionnalités
-- **Musculation** : Suivi complet de vos séances de musculation
-  - Ajout d'exercices avec date, poids, répétitions et séries
-  - Calcul automatique du volume total (poids × répétitions × séries)
-  - Visualisation de l'évolution avec graphiques interactifs
-  - Statistiques détaillées par exercice
-  - Filtrage par exercice
-  - Historique complet avec possibilité de suppression
+NeoStats est une application web complète dédiée au suivi de vos performances sportives. Conçue spécialement pour la musculation, elle vous permet d'enregistrer, suivre et analyser vos exercices avec précision.
 
-## 🚀 Déploiement sur GitHub Pages
+## ✨ Fonctionnalités principales
 
-1. **Créer un dépôt GitHub** :
+### 💪 Musculation
 
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin https://github.com/votre-username/NeoStats.git
-   git push -u origin main
-   ```
+- **Enregistrement d'exercices** : Ajoutez facilement vos exercices avec la date, le poids, les répétitions et les séries
+- **Bibliothèque complète d'exercices** : Accédez à des centaines d'exercices organisés par groupes musculaires (triceps, biceps, pectoraux, dos, épaules, quadriceps, ischio-jambiers, mollets, abdominaux)
+- **Système de favoris** : Marquez vos exercices préférés pour un accès rapide
+- **Filtrage intelligent** : Trouvez rapidement les exercices qui vous intéressent grâce aux filtres par équipement (poulie, machine, poids de corps, sans matériel)
+- **Tri personnalisable** : Triez vos exercices par ordre alphabétique (A-Z ou Z-A) ou par type d'équipement
+- **Zones musculaires** : Visualisez quelle partie du muscle est ciblée par chaque exercice
+- **Images d'exercices** : Consultez des illustrations pour mieux comprendre l'exécution
+- **Modification et suppression** : Modifiez ou supprimez facilement vos enregistrements
 
-2. **Activer GitHub Pages** :
+### 📊 Mes Stats
 
-   - Allez dans les paramètres de votre dépôt GitHub
-   - Dans la section "Pages", sélectionnez la branche `main` comme source
-   - Choisissez le dossier `/root`
-   - Cliquez sur "Save"
+- **Vue d'ensemble** : Consultez le total d'exercices, de séries et de répétitions enregistrés
+- **Statistiques détaillées** : Analysez votre progression pour chaque exercice
+- **Filtrage avancé** : Filtrez vos statistiques par exercice, catégorie et plage de dates
+- **Graphiques de progression** : Visualisez votre évolution avec des graphiques interactifs
+- **Détails par exercice** : Cliquez sur une carte d'exercice pour voir toutes vos performances jour par jour
+- **Historique complet** : Consultez toutes vos performances dans un tableau détaillé
 
-3. **Accéder à votre site** :
-   Votre site sera disponible à l'adresse : `https://votre-username.github.io/NeoStats/`
+### 🔒 Export/Import
 
-## 📁 Structure du projet
+- **Sauvegarde de vos données** : Exportez toutes vos statistiques dans un fichier JSON
+- **Restaurer vos données** : Importez vos statistiques sauvegardées pour les restaurer ou les transférer
+- **Protection par mot de passe** : Vos données sont protégées lors de l'export/import
 
-```
-NeoStats/
-├── index.html          # Page d'accueil
-├── musculation.html    # Page musculation
-├── css/
-│   └── style.css      # Styles principaux
-├── js/
-│   ├── app.js         # Script principal
-│   └── musculation.js # Logique musculation
-└── README.md          # Documentation
-```
+## 🚀 Comment utiliser NeoStats
 
-## 🎨 Technologies utilisées
+### Première utilisation
 
-- **HTML5** : Structure du site
-- **CSS3** : Styles et animations modernes
-- **JavaScript** : Logique et interactions
-- **Chart.js** : Graphiques d'évolution (CDN)
-- **LocalStorage** : Sauvegarde des données localement
+1. Ouvrez le site dans votre navigateur
+2. Naviguez vers la page "Musculation"
+3. Sélectionnez un groupe musculaire (par exemple : Pectoraux)
+4. Choisissez un exercice dans la liste
+5. Remplissez le formulaire :
+   - Date de l'exercice
+   - Poids en kg
+   - Nombre de répétitions
+   - Nombre de séries
+6. Cliquez sur "Enregistrer l'exercice"
 
-## 📝 Utilisation
+### Navigation
 
-1. Ouvrez `index.html` dans votre navigateur
-2. Cliquez sur "Musculation" dans le menu
-3. Remplissez le formulaire pour ajouter une nouvelle séance :
-   - Sélectionnez la date
-   - Choisissez l'exercice (ou créez un nouveau)
-   - Entrez le poids en kg
-   - Entrez le nombre de répétitions
-   - Entrez le nombre de séries
-4. Cliquez sur "Ajouter" pour sauvegarder
-5. Consultez vos statistiques et graphiques d'évolution
+- **Page d'accueil** : Découvrez les fonctionnalités du site
+- **Musculation** : Ajoutez et gérez vos exercices
+- **Mes Stats** : Consultez vos statistiques et votre progression
 
-## 🔮 Fonctionnalités à venir
+### Conseils d'utilisation
+
+- **Utilisez les favoris** : Marquez vos exercices les plus fréquents pour les retrouver rapidement
+- **Filtrez par équipement** : Si vous avez accès uniquement à certains équipements, utilisez les filtres pour trouver les exercices adaptés
+- **Consultez régulièrement vos stats** : La page "Mes Stats" vous permet de suivre votre progression et d'identifier vos points forts
+
+## 📱 Compatibilité
+
+NeoStats est entièrement responsive et fonctionne sur tous les appareils :
+
+- 📱 Smartphones (iPhone, Android)
+- 📱 Tablettes
+- 💻 Ordinateurs de bureau
+- 🖥️ Grands écrans
+
+## 💾 Sauvegarde des données
+
+Toutes vos données sont sauvegardées localement dans votre navigateur. Cela signifie que :
+
+- ✅ Vos données restent privées (stockées uniquement sur votre appareil)
+- ✅ Pas besoin de créer un compte
+- ✅ Accès instantané à vos statistiques
+- ⚠️ Les données sont liées à votre navigateur (si vous changez de navigateur, vous devrez exporter/importer vos données)
+
+## 🔮 Évolutions futures
+
+NeoStats continue d'évoluer ! Des fonctionnalités supplémentaires sont prévues :
 
 - **Courses** : Suivi des temps de course et distances
 - **Marche** : Enregistrement des distances parcourues
 - **Natation** : Suivi des longueurs et temps
-- Export des données en CSV
-- Comptes utilisateurs
-- Comparaison avec d'autres utilisateurs
+- Et bien plus encore...
 
 ## 📄 Licence
 

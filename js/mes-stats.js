@@ -2,7 +2,7 @@
 let allStats = [];
 let filteredStats = [];
 let weightChart = null;
-let volumeChart = null;
+// Volume chart removed - volume is no longer tracked in stats
 
 // Function to get muscle groups (use from musculation.js if available, otherwise fallback)
 // This avoids redeclaration errors since muscleGroups is const in musculation.js
@@ -304,7 +304,6 @@ function updateStatsTable() {
       <td>${stat.weight} kg</td>
       <td>${stat.reps}</td>
       <td>${stat.sets}</td>
-      <td>${stat.volume} kg</td>
       <td>
         <button class="btn-delete" onclick="deleteStat(${
           stat.id
@@ -342,8 +341,6 @@ function updateExerciseStats() {
       const firstStat = sortedStats[0];
       const latestStat = sortedStats[sortedStats.length - 1];
       const maxWeight = Math.max(...exerciseStats.map((s) => s.weight));
-      const maxVolume = Math.max(...exerciseStats.map((s) => s.volume));
-      const totalVolume = exerciseStats.reduce((sum, s) => sum + s.volume, 0);
       const avgWeight =
         exerciseStats.reduce((sum, s) => sum + s.weight, 0) /
         exerciseStats.length;
@@ -384,6 +381,7 @@ function updateExerciseStats() {
 
       const card = document.createElement("div");
       card.className = "exercise-stat-card";
+      card.style.cursor = "pointer";
       card.innerHTML = `
         <div class="exercise-stat-header">
           <div class="exercise-stat-icon">${exerciseIcon}</div>
@@ -405,19 +403,11 @@ function updateExerciseStats() {
               <span class="stat-item-value">${maxWeight} kg</span>
             </div>
             <div class="exercise-stat-item">
-              <span class="stat-item-label">Volume max</span>
-              <span class="stat-item-value">${maxVolume} kg</span>
-            </div>
-          </div>
-          <div class="exercise-stat-row">
-            <div class="exercise-stat-item">
               <span class="stat-item-label">Poids moyen</span>
               <span class="stat-item-value">${avgWeight.toFixed(1)} kg</span>
             </div>
-            <div class="exercise-stat-item">
-              <span class="stat-item-label">Volume total</span>
-              <span class="stat-item-value">${totalVolume.toLocaleString()} kg</span>
-            </div>
+          </div>
+          <div class="exercise-stat-row">
             <div class="exercise-stat-item">
               <span class="stat-item-label">Progression</span>
               <span class="stat-item-value ${
@@ -436,6 +426,19 @@ function updateExerciseStats() {
           </div>
         </div>
       `;
+
+      // Add click event to open detail modal
+      card.addEventListener("click", function () {
+        showExerciseDetailModal(
+          exercise,
+          exerciseStats,
+          exerciseIcon,
+          muscleGroupName,
+          muscleGroupIcon,
+          muscleGroupColor
+        );
+      });
+
       container.appendChild(card);
     });
 }
@@ -443,7 +446,7 @@ function updateExerciseStats() {
 // Update charts
 function updateCharts() {
   updateWeightChart();
-  updateVolumeChart();
+  // Volume chart removed - volume is no longer tracked in stats
 }
 
 // Update weight chart
@@ -557,75 +560,134 @@ function updateWeightChart() {
   });
 }
 
-// Update volume chart
-function updateVolumeChart() {
-  const ctx = document.getElementById("volumeChart");
-  if (!ctx) return;
+// Volume chart removed - volume is no longer tracked in stats
 
-  // Group by date
-  const volumeByDate = {};
-  filteredStats.forEach((stat) => {
-    if (!volumeByDate[stat.date]) {
-      volumeByDate[stat.date] = 0;
+// Show exercise detail modal
+function showExerciseDetailModal(
+  exercise,
+  exerciseStats,
+  exerciseIcon,
+  muscleGroupName,
+  muscleGroupIcon,
+  muscleGroupColor
+) {
+  const modal = document.getElementById("exerciseDetailModal");
+  const modalIcon = document.getElementById("exerciseDetailIcon");
+  const modalName = document.getElementById("exerciseDetailName");
+  const modalCategory = document.getElementById("exerciseDetailCategory");
+  const modalStats = document.getElementById("exerciseDetailStats");
+
+  // Set header info
+  modalIcon.textContent = exerciseIcon;
+  modalName.textContent = exercise;
+  modalCategory.innerHTML = `${muscleGroupIcon} ${muscleGroupName}`;
+  modalCategory.style.borderColor = muscleGroupColor;
+
+  // Group stats by date
+  const statsByDate = {};
+  exerciseStats.forEach((stat) => {
+    if (!statsByDate[stat.date]) {
+      statsByDate[stat.date] = [];
     }
-    volumeByDate[stat.date] += stat.volume;
+    statsByDate[stat.date].push(stat);
   });
 
-  const dates = Object.keys(volumeByDate).sort();
-  const volumes = dates.map((date) => volumeByDate[date]);
-
-  if (volumeChart) {
-    volumeChart.destroy();
-  }
-
-  if (filteredStats.length === 0) {
-    ctx.getContext("2d").clearRect(0, 0, ctx.width, ctx.height);
-    return;
-  }
-
-  volumeChart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: dates.map((date) => formatDate(date)),
-      datasets: [
-        {
-          label: "Volume total (kg)",
-          data: volumes,
-          backgroundColor: "rgba(255, 107, 53, 0.6)",
-          borderColor: "#ff6b35",
-          borderWidth: 2,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: {
-        legend: {
-          display: false,
-        },
-        title: {
-          display: false,
-        },
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: "Volume (kg)",
-          },
-        },
-        x: {
-          title: {
-            display: true,
-            text: "Date",
-          },
-        },
-      },
-    },
+  // Sort dates in reverse chronological order (newest first)
+  const sortedDates = Object.keys(statsByDate).sort((a, b) => {
+    return new Date(b) - new Date(a);
   });
+
+  // Build stats HTML
+  let statsHTML = "";
+  if (sortedDates.length === 0) {
+    statsHTML =
+      '<div class="exercise-detail-empty">Aucune statistique disponible</div>';
+  } else {
+    sortedDates.forEach((date) => {
+      const dateStats = statsByDate[date];
+      // Sort stats by ID in descending order (newest first) for same day multiple entries
+      dateStats.sort((a, b) => {
+        // Sort by ID in descending order (newest first)
+        return (b.id || 0) - (a.id || 0);
+      });
+
+      statsHTML += `
+        <div class="exercise-detail-date-group">
+          <div class="exercise-detail-date-header">
+            <span class="exercise-detail-date-icon">📅</span>
+            <span class="exercise-detail-date-text">${formatDate(date)}</span>
+            <span class="exercise-detail-date-count">${
+              dateStats.length
+            } exercice${dateStats.length > 1 ? "s" : ""}</span>
+          </div>
+          <div class="exercise-detail-date-stats">
+            ${dateStats
+              .map(
+                (stat) => `
+              <div class="exercise-detail-stat-item">
+                <div class="exercise-detail-stat-values">
+                  <span class="exercise-detail-stat-value">
+                    <span class="exercise-detail-stat-label">Poids:</span>
+                    <strong>${stat.weight} kg</strong>
+                  </span>
+                  <span class="exercise-detail-stat-value">
+                    <span class="exercise-detail-stat-label">Répétitions:</span>
+                    <strong>${stat.reps}</strong>
+                  </span>
+                  <span class="exercise-detail-stat-value">
+                    <span class="exercise-detail-stat-label">Séries:</span>
+                    <strong>${stat.sets}</strong>
+                  </span>
+                </div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  modalStats.innerHTML = statsHTML;
+
+  // Show modal
+  modal.style.display = "flex";
+
+  // Prevent body scroll when modal is open
+  document.body.style.overflow = "hidden";
 }
+
+// Close exercise detail modal
+function closeExerciseDetailModal() {
+  const modal = document.getElementById("exerciseDetailModal");
+  if (modal) {
+    modal.style.display = "none";
+    document.body.style.overflow = "";
+  }
+}
+
+// Make functions globally accessible
+window.closeExerciseDetailModal = closeExerciseDetailModal;
+
+// Close modal when clicking outside
+document.addEventListener("DOMContentLoaded", function () {
+  const modal = document.getElementById("exerciseDetailModal");
+  if (modal) {
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal) {
+        closeExerciseDetailModal();
+      }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && modal.style.display === "flex") {
+        closeExerciseDetailModal();
+      }
+    });
+  }
+});
 
 // Delete stat
 function deleteStat(id) {

@@ -129,6 +129,10 @@ const exerciseMuscleZones = {
     "Rowing à la barre en T avec machine": "épaisseur",
     "Rowing en prise neutre assis à la machine": "épaisseur",
     "Tirage vertical en supination à la machine Hammer Strength": "largeur",
+    "Tirage vertical": "largeur", // Zone par défaut
+    "Tirage vertical (poulie)": "largeur", // Variante poulie
+    "Tirage vertical (convergent)": "largeur", // Variante convergent
+    // Ancienne entrée conservée pour compatibilité
     "Tirage vertical prise large": "largeur",
     "Tirage vertical prise inversée": "largeur",
     "Pull-over décliné à la barre": "largeur",
@@ -157,10 +161,102 @@ const exerciseMuscleZones = {
     "Tirage horizontal avec élastique": "épaisseur",
     "Soulevé de terre": "totalité",
   },
-  epaules: {},
-  quadriceps: {},
-  "ischio-jambiers": {},
-  mollets: {},
+  epaules: {
+    // Antérieur (deltoïde antérieur)
+    "Élévation frontale sur banc incliné": "antérieur",
+    "Élévations frontales": "antérieur",
+    "Élévations frontales à la poulie basse": "antérieur",
+    "Développé militaire": "totalité",
+    "Développé Arnold": "totalité",
+    "Développé épaules assis": "totalité",
+    "Développé épaules avec haltères": "totalité",
+    "Développé épaules debout à la landmine": "totalité",
+    "Développé épaules à la Smith machine": "totalité",
+    "Développé épaules à la machine": "totalité",
+    "Développé épaule unilatéral avec élastique": "totalité",
+    "Développé épaule unilatéral à genou avec landmine": "totalité",
+    "Développé épaules avec élastique": "totalité",
+    "Développé épaules assis avec élastique": "totalité",
+    "Développé nuque barre guidée": "totalité",
+    "Tirage menton avec élastique": "latéral", // Cible principalement le deltoïde latéral
+    "Thruster avec kettlebell": "totalité",
+    "Thruster avec landmine": "totalité",
+    Thruster: "totalité",
+    "Russian twist avec développé épaules": "totalité",
+    "Handstand push-up": "totalité",
+    "Pompes piquées": "antérieur",
+    // Latéral (deltoïde latéral)
+    "Élévations latérales à la poulie vis à vis": "latéral",
+    "Élévations latérales à la machine": "latéral",
+    "Élévations latérales": "latéral",
+    "Élévations latérales inclinées avec haltère": "latéral",
+    "Élévations latérales unilatérales à la poulie": "latéral",
+    "Croix de fer avec haltères": "latéral",
+    // Postérieur (deltoïde postérieur)
+    "Face pull": "postérieur",
+    "Pec deck inversé": "postérieur",
+    "Oiseau assis sur banc": "postérieur",
+    "Oiseau avec élastique": "postérieur",
+    "Oiseau inversé avec sangles de suspension": "postérieur",
+    "Écartés inversés à la poulie": "postérieur",
+    "Rotation externe de l'épaule à la poulie": "postérieur",
+    "Rotation externe de l'épaule couchée avec haltère": "postérieur",
+    "Rotations cubaines": "postérieur",
+    "Extension horizontale des épaules avec élastique": "postérieur",
+  },
+  quadriceps: {
+    Squat: "quadriceps",
+    "Squat barre devant": "quadriceps",
+    "Squat à la Smith machine": "quadriceps",
+    "Hack Squat": "quadriceps",
+    "Hack squat assis": "quadriceps",
+    "Presse à cuisses inclinée": "quadriceps",
+    "Presse à cuisses horizontale": "quadriceps",
+    "Presse à cuisses verticale": "quadriceps",
+    "Leg extension": "quadriceps",
+    "Montées sur banc": "quadriceps",
+    "Fentes avant avec haltères": "quadriceps",
+    "Squat bulgare avec haltères": "quadriceps",
+    "Squat sauté": "quadriceps",
+    "Goblet squat avec haltère": "quadriceps",
+    "Overhead squat": "quadriceps",
+    "Split squat à la Smith machine": "quadriceps",
+    "Squat avec landmine": "quadriceps",
+    "Squat cosaque": "quadriceps",
+    "Air Squat": "quadriceps",
+    "Squat pistolet avec sangle de suspension": "quadriceps",
+    "Split squat avec sangles de suspension": "quadriceps",
+    "Squat avant avec double kettlebell": "quadriceps",
+    "Safety bar squat": "quadriceps",
+    "Fentes inversées avec landmine": "quadriceps",
+  },
+  "ischio-jambiers": {
+    "Leg curl allongé": "ischio-jambiers",
+    "Soulevé de terre jambes tendues": "ischio-jambiers",
+    "Good morning": "ischio-jambiers",
+    "Soulevé de terre roumain": "ischio-jambiers",
+    "Leg curl assis à la machine": "ischio-jambiers",
+    "Nordic hamstring curl": "ischio-jambiers",
+    "Soulevé de terre": "ischio-jambiers",
+    "Extensions de hanches au GHD": "ischio-jambiers",
+    "Presse à cuisses inclinée": "ischio-jambiers",
+    Squat: "ischio-jambiers",
+    "Rack Pull": "ischio-jambiers",
+    "Fentes avant avec barre": "ischio-jambiers",
+  },
+  mollets: {
+    "Extensions des mollets avec partenaire": "mollets",
+    "Extension des mollets à la barre debout": "mollets",
+    "Extensions des mollets assis avec barre": "mollets",
+    "Élévations des mollets au Donkey": "mollets",
+    "Extensions des mollets au hack-squat": "mollets",
+    "Extensions des mollets assis à la Smith machine": "mollets",
+    "Extensions des mollets debout à la Smith machine": "mollets",
+    "Extensions des mollets debout à la machine": "mollets",
+    "Extensions des mollets sur une marche": "mollets",
+    "Extension des mollets assis à la machine": "mollets",
+    "Extension des mollets à la presse": "mollets",
+  },
   abdominaux: {},
 };
 
@@ -205,6 +301,21 @@ function getMuscleZoneText(zone, muscleGroup) {
       bas: "Bas du dos (lombaires)",
       totalité: "Totalité du dos",
     },
+    epaules: {
+      antérieur: "Antérieur (deltoïde antérieur)",
+      latéral: "Latéral (deltoïde latéral)",
+      postérieur: "Postérieur (deltoïde postérieur)",
+      totalité: "Totalité des épaules",
+    },
+    quadriceps: {
+      quadriceps: "Quadriceps",
+    },
+    "ischio-jambiers": {
+      "ischio-jambiers": "Ischio-jambiers",
+    },
+    mollets: {
+      mollets: "Mollets",
+    },
   };
 
   if (zoneLabels[muscleGroup] && zoneLabels[muscleGroup][zone]) {
@@ -239,6 +350,15 @@ function getMuscleZoneIcon(zone) {
     totalité: "💪",
     // Général
     tout: "💪",
+    // Épaules
+    antérieur: "⬆️",
+    latéral: "➡️",
+    postérieur: "⬅️",
+    totalité: "💪",
+    // Quadriceps, Ischio-jambiers, Mollets
+    quadriceps: "🦵",
+    "ischio-jambiers": "🦵",
+    mollets: "🚶",
   };
   return zoneIcons[zone] || "📍";
 }

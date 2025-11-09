@@ -251,8 +251,17 @@ const exerciseImages = {
       "https://www.docteur-fitness.com/wp-content/uploads/2022/01/rowing-assis-machine-hammer-strenght.gif",
     "Tirage vertical en supination à la machine Hammer Strength":
       "https://www.docteur-fitness.com/wp-content/uploads/2022/01/tirage-avant-iso-laterale-hammer-strength.gif",
-    "Tirage vertical prise large":
-      "assets/img/dos/Tirage vertical prise large.png",
+    "Tirage vertical": {
+      main: "assets/img/dos/Tirage vertical prise large.png", // Image principale pour la carte
+      variants: {
+        poulie:
+          "https://www.docteur-fitness.com/wp-content/uploads/2021/08/tirage-vertical-prise-serree.gif", // Image pour variante poulie (à configurer)
+        convergent:
+          "https://lightinfitness.com/wp-content/uploads/2022/12/Tirage-dorsaux-Gold-Line.jpg", // Image pour variante convergent (à configurer)
+      },
+    },
+    // Ancienne entrée conservée pour compatibilité
+    "Tirage vertical prise large": "",
     "Tirage vertical prise inversée":
       "https://www.docteur-fitness.com/wp-content/uploads/2022/01/tirage-vertical-prise-inversee.gif",
     "Pull-over décliné à la barre":
@@ -498,7 +507,29 @@ function getExerciseImageUrl(exerciseName, muscleGroup, variant = null) {
     return null;
   }
 
-  const exerciseImage = exerciseImages[muscleGroup][exerciseName];
+  // Extraire la variante du nom d'exercice si elle est entre parenthèses
+  let baseExerciseName = exerciseName;
+  let extractedVariant = variant;
+
+  if (
+    !extractedVariant &&
+    exerciseName.includes("(") &&
+    exerciseName.includes(")")
+  ) {
+    const match = exerciseName.match(/^(.+?)\s*\((.+?)\)$/);
+    if (match) {
+      baseExerciseName = match[1].trim();
+      extractedVariant = match[2].trim();
+    }
+  }
+
+  // Essayer d'abord avec le nom de base
+  let exerciseImage = exerciseImages[muscleGroup][baseExerciseName];
+
+  // Si pas trouvé, essayer avec le nom complet (pour compatibilité avec anciennes stats)
+  if (!exerciseImage) {
+    exerciseImage = exerciseImages[muscleGroup][exerciseName];
+  }
 
   // Si l'exercice a une structure avec image principale et variantes
   if (
@@ -506,9 +537,16 @@ function getExerciseImageUrl(exerciseName, muscleGroup, variant = null) {
     typeof exerciseImage === "object" &&
     exerciseImage.main !== undefined
   ) {
+    // Utiliser la variante extraite ou celle fournie en paramètre
+    const finalVariant = extractedVariant || variant;
+
     // Si on demande une variante spécifique
-    if (variant && exerciseImage.variants && exerciseImage.variants[variant]) {
-      const variantUrl = exerciseImage.variants[variant];
+    if (
+      finalVariant &&
+      exerciseImage.variants &&
+      exerciseImage.variants[finalVariant]
+    ) {
+      const variantUrl = exerciseImage.variants[finalVariant];
       if (typeof variantUrl === "string" && variantUrl.trim() !== "") {
         return variantUrl.trim();
       }
