@@ -293,23 +293,44 @@ function updateStatsTable() {
       ? muscleGroups[stat.muscleGroup]?.icon || "💪"
       : "❓";
 
+    const muscleGroupColor = stat.muscleGroup
+      ? muscleGroups[stat.muscleGroup]?.color || "#666"
+      : "#666";
+
     row.innerHTML = `
-      <td>${formatDate(stat.date)}</td>
       <td>
-        <span class="muscle-group-badge" data-group="${stat.muscleGroup || ""}">
+        <span class="table-date">${formatDate(stat.date)}</span>
+      </td>
+      <td>
+        <span class="muscle-group-badge-modern" data-group="${
+          stat.muscleGroup || ""
+        }" style="border-color: ${muscleGroupColor}; color: ${muscleGroupColor};">
           ${muscleGroupIcon} ${muscleGroupName}
         </span>
       </td>
-      <td>${escapeHtml(stat.exercise)}</td>
-      <td>${stat.weight} kg</td>
-      <td>${stat.reps}</td>
-      <td>${stat.sets}</td>
       <td>
-        <button class="btn-delete" onclick="deleteStat(${
-          stat.id
-        })" title="Supprimer">
-          🗑️
-        </button>
+        <span class="table-exercise">${escapeHtml(stat.exercise)}</span>
+      </td>
+      <td>
+        <span class="table-weight">${
+          stat.weight
+        } <span class="unit">kg</span></span>
+      </td>
+      <td>
+        <span class="table-reps">${stat.reps}</span>
+      </td>
+      <td>
+        <span class="table-sets">${stat.sets}</span>
+      </td>
+      <td>
+        <div class="table-actions">
+          <button class="table-btn table-btn-delete" onclick="deleteStat(${
+            stat.id
+          })" title="Supprimer">
+            <span class="btn-icon">🗑️</span>
+            <span class="btn-text">Supprimer</span>
+          </button>
+        </div>
       </td>
     `;
     tbody.appendChild(row);
@@ -330,117 +351,187 @@ function updateExerciseStats() {
     exerciseGroups[stat.exercise].push(stat);
   });
 
-  Object.keys(exerciseGroups)
-    .sort()
-    .forEach((exercise) => {
-      const exerciseStats = exerciseGroups[exercise];
-      const sortedStats = exerciseStats.sort(
-        (a, b) => new Date(a.date) - new Date(b.date)
-      );
+  // Check if we have active filters
+  const categoryFilter = document.getElementById("categoryFilter");
+  const exerciseFilter = document.getElementById("exerciseFilter");
+  const dateStart = document.getElementById("dateStart");
+  const dateEnd = document.getElementById("dateEnd");
 
-      const firstStat = sortedStats[0];
-      const latestStat = sortedStats[sortedStats.length - 1];
-      const maxWeight = Math.max(...exerciseStats.map((s) => s.weight));
-      const avgWeight =
-        exerciseStats.reduce((sum, s) => sum + s.weight, 0) /
-        exerciseStats.length;
-      const improvement = latestStat.weight - firstStat.weight;
-      const improvementPercent =
-        firstStat.weight > 0
-          ? ((improvement / firstStat.weight) * 100).toFixed(1)
-          : 0;
+  const hasActiveFilters =
+    (categoryFilter && categoryFilter.value !== "all") ||
+    (exerciseFilter && exerciseFilter.value !== "all") ||
+    (dateStart && dateStart.value) ||
+    (dateEnd && dateEnd.value);
 
-      // Get muscle group info
-      const muscleGroup = exerciseStats[0].muscleGroup;
-      const muscleGroups = getMuscleGroups();
-      const muscleGroupName = muscleGroup
-        ? muscleGroups[muscleGroup]?.name || muscleGroup
-        : "Non spécifié";
-      const muscleGroupIcon = muscleGroup
-        ? muscleGroups[muscleGroup]?.icon || "💪"
-        : "❓";
-      const muscleGroupColor = muscleGroup
-        ? muscleGroups[muscleGroup]?.color || "#666"
-        : "#666";
+  // Sort exercises: by muscle group if no filters, otherwise alphabetically
+  const exerciseKeys = Object.keys(exerciseGroups);
+  let sortedExerciseKeys;
 
-      // Get exercise icon
-      let exerciseIcon = "💪";
-      // Try to get icon from exercisesByGroup if available
-      if (
-        typeof exercisesByGroup !== "undefined" &&
-        muscleGroup &&
-        exercisesByGroup[muscleGroup]
-      ) {
-        const exerciseData = exercisesByGroup[muscleGroup].find(
-          (e) => e.name === exercise
-        );
-        if (exerciseData && exerciseData.icon) {
-          exerciseIcon = exerciseData.icon;
+  if (!hasActiveFilters) {
+    // Sort by muscle group, then by exercise name
+    const muscleGroups = getMuscleGroups();
+    const muscleGroupOrder = Object.keys(muscleGroups);
+
+    sortedExerciseKeys = exerciseKeys.sort((a, b) => {
+      const groupA = exerciseGroups[a][0].muscleGroup || "";
+      const groupB = exerciseGroups[b][0].muscleGroup || "";
+
+      // Get order index (higher priority = lower index)
+      const indexA = muscleGroupOrder.indexOf(groupA);
+      const indexB = muscleGroupOrder.indexOf(groupB);
+
+      // If both have groups, sort by group order
+      if (indexA !== -1 && indexB !== -1) {
+        if (indexA !== indexB) {
+          return indexA - indexB;
         }
+      } else if (indexA !== -1) {
+        return -1; // A has group, B doesn't - A comes first
+      } else if (indexB !== -1) {
+        return 1; // B has group, A doesn't - B comes first
       }
 
-      const card = document.createElement("div");
-      card.className = "exercise-stat-card";
-      card.style.cursor = "pointer";
-      card.innerHTML = `
-        <div class="exercise-stat-header">
-          <div class="exercise-stat-icon">${exerciseIcon}</div>
-          <div class="exercise-stat-title">
+      // Same group or no group - sort alphabetically
+      return a.localeCompare(b);
+    });
+  } else {
+    // With filters, sort alphabetically
+    sortedExerciseKeys = exerciseKeys.sort();
+  }
+
+  sortedExerciseKeys.forEach((exercise) => {
+    const exerciseStats = exerciseGroups[exercise];
+    const sortedStats = exerciseStats.sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
+
+    const firstStat = sortedStats[0];
+    const latestStat = sortedStats[sortedStats.length - 1];
+    const maxWeight = Math.max(...exerciseStats.map((s) => s.weight));
+    const avgWeight =
+      exerciseStats.reduce((sum, s) => sum + s.weight, 0) /
+      exerciseStats.length;
+    const improvement = latestStat.weight - firstStat.weight;
+    const improvementPercent =
+      firstStat.weight > 0
+        ? ((improvement / firstStat.weight) * 100).toFixed(1)
+        : 0;
+
+    // Get muscle group info
+    const muscleGroup = exerciseStats[0].muscleGroup;
+    const muscleGroups = getMuscleGroups();
+    const muscleGroupName = muscleGroup
+      ? muscleGroups[muscleGroup]?.name || muscleGroup
+      : "Non spécifié";
+    const muscleGroupIcon = muscleGroup
+      ? muscleGroups[muscleGroup]?.icon || "💪"
+      : "❓";
+    const muscleGroupColor = muscleGroup
+      ? muscleGroups[muscleGroup]?.color || "#666"
+      : "#666";
+
+    // Get exercise icon
+    let exerciseIcon = "💪";
+    // Try to get icon from exercisesByGroup if available
+    if (
+      typeof exercisesByGroup !== "undefined" &&
+      muscleGroup &&
+      exercisesByGroup[muscleGroup]
+    ) {
+      const exerciseData = exercisesByGroup[muscleGroup].find(
+        (e) => e.name === exercise
+      );
+      if (exerciseData && exerciseData.icon) {
+        exerciseIcon = exerciseData.icon;
+      }
+    }
+
+    const card = document.createElement("div");
+    card.className = "exercise-stat-card";
+    card.style.cursor = "pointer";
+    card.innerHTML = `
+        <div class="exercise-stat-header-modern">
+          <div class="exercise-stat-icon-modern" style="background: linear-gradient(135deg, ${muscleGroupColor}20 0%, ${muscleGroupColor}10 100%);">
+            <span>${exerciseIcon}</span>
+          </div>
+          <div class="exercise-stat-title-modern">
             <h3>${escapeHtml(exercise)}</h3>
-            <span class="exercise-stat-category" style="border-color: ${muscleGroupColor}">
+            <span class="exercise-stat-category-modern" style="border-color: ${muscleGroupColor}; color: ${muscleGroupColor};">
               ${muscleGroupIcon} ${muscleGroupName}
             </span>
           </div>
         </div>
-        <div class="exercise-stat-body">
-          <div class="exercise-stat-row">
-            <div class="exercise-stat-item">
-              <span class="stat-item-label">Exercices</span>
-              <span class="stat-item-value">${exerciseStats.length}</span>
+        <div class="exercise-stat-body-modern">
+          <div class="stat-grid-modern">
+            <div class="stat-box-modern">
+              <div class="stat-box-icon">📊</div>
+              <div class="stat-box-content">
+                <span class="stat-box-label">Sessions</span>
+                <span class="stat-box-value">${exerciseStats.length}</span>
+              </div>
             </div>
-            <div class="exercise-stat-item">
-              <span class="stat-item-label">Meilleur poids</span>
-              <span class="stat-item-value">${maxWeight} kg</span>
+            <div class="stat-box-modern highlight">
+              <div class="stat-box-icon">🏆</div>
+              <div class="stat-box-content">
+                <span class="stat-box-label">Meilleur</span>
+                <span class="stat-box-value">${maxWeight} <span class="unit">kg</span></span>
+              </div>
             </div>
-            <div class="exercise-stat-item">
-              <span class="stat-item-label">Poids moyen</span>
-              <span class="stat-item-value">${avgWeight.toFixed(1)} kg</span>
+            <div class="stat-box-modern">
+              <div class="stat-box-icon">📈</div>
+              <div class="stat-box-content">
+                <span class="stat-box-label">Moyenne</span>
+                <span class="stat-box-value">${avgWeight.toFixed(
+                  1
+                )} <span class="unit">kg</span></span>
+              </div>
+            </div>
+            <div class="stat-box-modern progress-box ${
+              improvement >= 0 ? "positive" : "negative"
+            }">
+              <div class="stat-box-icon">${improvement >= 0 ? "📉" : "📉"}</div>
+              <div class="stat-box-content">
+                <span class="stat-box-label">Progression</span>
+                <span class="stat-box-value">
+                  ${improvement >= 0 ? "+" : ""}${improvement.toFixed(
+      1
+    )} <span class="unit">kg</span>
+                  <span class="stat-percent">${
+                    improvement >= 0 ? "+" : ""
+                  }${improvementPercent}%</span>
+                </span>
+              </div>
             </div>
           </div>
-          <div class="exercise-stat-row">
-            <div class="exercise-stat-item">
-              <span class="stat-item-label">Progression</span>
-              <span class="stat-item-value ${
-                improvement >= 0 ? "stat-positive" : "stat-negative"
-              }">
-                ${improvement >= 0 ? "+" : ""}${improvement.toFixed(1)} kg
-                (${improvement >= 0 ? "+" : ""}${improvementPercent}%)
-              </span>
+          <div class="exercise-stat-footer">
+            <div class="footer-item">
+              <span class="footer-icon">📅</span>
+              <span class="footer-label">Premier:</span>
+              <span class="footer-value">${formatDate(firstStat.date)}</span>
             </div>
-          </div>
-          <div class="exercise-stat-dates">
-            <span class="stat-date-label">Premier exercice:</span>
-            <span class="stat-date-value">${formatDate(firstStat.date)}</span>
-            <span class="stat-date-label">Dernier exercice:</span>
-            <span class="stat-date-value">${formatDate(latestStat.date)}</span>
+            <div class="footer-item">
+              <span class="footer-icon">📅</span>
+              <span class="footer-label">Dernier:</span>
+              <span class="footer-value">${formatDate(latestStat.date)}</span>
+            </div>
           </div>
         </div>
       `;
 
-      // Add click event to open detail modal
-      card.addEventListener("click", function () {
-        showExerciseDetailModal(
-          exercise,
-          exerciseStats,
-          exerciseIcon,
-          muscleGroupName,
-          muscleGroupIcon,
-          muscleGroupColor
-        );
-      });
-
-      container.appendChild(card);
+    // Add click event to open detail modal
+    card.addEventListener("click", function () {
+      showExerciseDetailModal(
+        exercise,
+        exerciseStats,
+        exerciseIcon,
+        muscleGroupName,
+        muscleGroupIcon,
+        muscleGroupColor
+      );
     });
+
+    container.appendChild(card);
+  });
 }
 
 // Update charts

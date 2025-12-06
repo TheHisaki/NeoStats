@@ -13,7 +13,9 @@
       <div class="container">
         <div class="nav-brand">
           <a href="index.html">
-            <h1>💪 NeoStats</h1>
+            <h1>
+              <span class="emoji">💪</span><span class="text">NeoStats</span>
+            </h1>
           </a>
         </div>
         <button
@@ -35,7 +37,9 @@
     <main class="main-content">
       <div class="container">
         <div class="page-header">
-          <h1 class="page-title">💪 Musculation</h1>
+          <h1 class="page-title">
+            <span class="emoji">💪</span><span class="text">Musculation</span>
+          </h1>
           <p class="page-subtitle">
             Enregistrez vos exercices et suivez votre progression
           </p>
@@ -44,7 +48,10 @@
         <!-- Add Stats Section -->
         <section class="add-stats-section">
           <div class="section-header">
-            <h2>➕ Nouvel exercice</h2>
+            <h2>
+              <span class="emoji">➕</span
+              ><span class="text">Nouvel exercice</span>
+            </h2>
             <p>Ajoutez vos performances pour cet exercice</p>
           </div>
 
@@ -345,8 +352,8 @@
         <section class="stats-display-section">
           <div class="section-header">
             <div style="flex: 1">
-              <h2>📊 Vos statistiques</h2>
-              <p>Consultez votre progression et votre évolution</p>
+              <h2>📊 Historique des exercices</h2>
+              <p>Consultez et gérez vos exercices enregistrés</p>
             </div>
             <div
               class="export-import-buttons"
@@ -370,35 +377,60 @@
           </div>
 
           <!-- Exercise Filter -->
-          <div class="filter-section-modern">
-            <div class="filter-label">
-              <span>🔍 Filtrer:</span>
+          <div class="filter-section-pro">
+            <div class="filter-header">
+              <label class="filter-label-pro">
+                <span class="filter-icon">🔍</span>
+                Filtrer par exercice
+              </label>
             </div>
-            <div class="filter-buttons" id="filterButtons">
-              <button class="filter-btn active" data-filter="all">Tous</button>
-              <!-- Les filtres seront générés dynamiquement -->
+            <div class="filter-controls">
+              <div class="filter-search-wrapper">
+                <input
+                  type="text"
+                  id="exerciseSearchInput"
+                  class="filter-search-input"
+                  placeholder="Rechercher un exercice..."
+                  autocomplete="off"
+                />
+                <span class="search-icon">🔎</span>
+              </div>
+              <div class="filter-select-wrapper">
+                <select id="exerciseFilterSelect" class="filter-select-pro">
+                  <option value="all">Tous les exercices</option>
+                  <!-- Les options seront générées dynamiquement -->
+                </select>
+                <span class="select-arrow">▼</span>
+              </div>
+              <button
+                id="clearFilterBtn"
+                class="filter-clear-btn"
+                title="Réinitialiser le filtre"
+                style="display: none"
+              >
+                ✕ Réinitialiser
+              </button>
             </div>
-          </div>
-
-          <!-- Stats Cards -->
-          <div id="statsCards" class="stats-cards">
-            <!-- Les cartes de stats seront générées dynamiquement -->
-          </div>
-
-          <!-- Charts Section -->
-          <div id="chartsSection" class="charts-section" style="display: none">
-            <div class="section-header-small">
-              <h3>📈 Évolution des performances</h3>
-            </div>
-            <div class="chart-container">
-              <canvas id="progressChart"></canvas>
+            <div
+              id="activeFilterBadge"
+              class="active-filter-badge"
+              style="display: none"
+            >
+              <span class="badge-text"></span>
+              <button class="badge-close" onclick="clearFilter()">×</button>
             </div>
           </div>
 
           <!-- Stats Table -->
           <div id="statsTable" class="stats-table-container">
-            <div class="section-header-small">
-              <h3>📋 Historique complet</h3>
+            <div class="table-header">
+              <h3 class="table-title">
+                <span class="table-title-icon">📋</span>
+                Historique des exercices
+              </h3>
+              <p class="table-subtitle">
+                Gérez et consultez tous vos exercices enregistrés
+              </p>
             </div>
             <div class="table-wrapper">
               <table class="stats-table">
@@ -416,6 +448,16 @@
                   <!-- Les lignes seront générées dynamiquement -->
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Charts Section -->
+          <div id="chartsSection" class="charts-section" style="display: none">
+            <div class="section-header-small">
+              <h3>📈 Évolution des performances</h3>
+            </div>
+            <div class="chart-container">
+              <canvas id="progressChart"></canvas>
             </div>
           </div>
 

@@ -3,6 +3,7 @@ let stats = [];
 let progressChart = null;
 let selectedExercise = null;
 let selectedMuscleGroup = null;
+let selectedExerciseRealMuscleGroup = null; // Store the real muscleGroup of the selected exercise (for favorites)
 let favoriteExercises = [];
 let editingStatId = null; // ID de la stat en cours d'édition (null = mode création)
 
@@ -442,11 +443,77 @@ function applyExerciseSortFilter(exercises, muscleGroupKey) {
   return filtered;
 }
 
+// Get muscle group from exercise name (for fixing old stats)
+function getMuscleGroupFromExerciseName(exerciseName) {
+  if (!exerciseName) return null;
+
+  // Check all muscle groups
+  for (const [groupKey, exercises] of Object.entries(exercisesByGroup)) {
+    if (exercises && exercises.some((ex) => ex.name === exerciseName)) {
+      return groupKey;
+    }
+  }
+
+  // Check variants (exercises with parentheses)
+  for (const [groupKey, exercises] of Object.entries(exercisesByGroup)) {
+    if (
+      exercises &&
+      exercises.some(
+        (ex) => ex.name && exerciseName.startsWith(ex.name.split("(")[0].trim())
+      )
+    ) {
+      return groupKey;
+    }
+  }
+
+  return null;
+}
+
+// Fix old stats that have "favoris" as muscleGroup
+function fixOldFavoriteStats() {
+  let fixed = false;
+  let fixedCount = 0;
+
+  stats.forEach((stat) => {
+    if (stat.muscleGroup === "favoris") {
+      const realMuscleGroup = getMuscleGroupFromExerciseName(stat.exercise);
+      if (realMuscleGroup) {
+        stat.muscleGroup = realMuscleGroup;
+        fixed = true;
+        fixedCount++;
+        console.log(
+          `✅ Corrigé: "${stat.exercise}" de "favoris" vers "${realMuscleGroup}"`
+        );
+      } else {
+        console.warn(
+          `⚠️ Impossible de trouver le groupe musculaire pour: "${stat.exercise}"`
+        );
+      }
+    }
+  });
+
+  if (fixed) {
+    saveStats();
+    console.log(`✅ ${fixedCount} exercice(s) corrigé(s) automatiquement`);
+    if (fixedCount > 0) {
+      showNotification(
+        `✅ ${fixedCount} exercice(s) corrigé(s) automatiquement`,
+        "success"
+      );
+    }
+  }
+
+  return fixedCount;
+}
+
 // Initialize
 document.addEventListener("DOMContentLoaded", function () {
   // Load data first
   loadStats();
   loadFavoriteExercises();
+
+  // Fix old stats with "favoris" as muscleGroup
+  fixOldFavoriteStats();
 
   // Only setup muscle group grid if the element exists (musculation.html only)
   const muscleGroupGrid = document.getElementById("muscleGroupGrid");
@@ -463,8 +530,8 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Only setup display if elements exist (musculation.html only)
-  const statsCards = document.getElementById("statsCards");
-  if (statsCards) {
+  const statsTable = document.getElementById("statsTable");
+  if (statsTable) {
     // Update display immediately
     updateDisplay();
 
@@ -478,6 +545,13 @@ document.addEventListener("DOMContentLoaded", function () {
   const filterButtons = document.getElementById("filterButtons");
   if (filterButtons) {
     setupFilterButtons();
+  }
+
+  // Setup professional filter system
+  const exerciseFilterSelect = document.getElementById("exerciseFilterSelect");
+  const exerciseSearchInput = document.getElementById("exerciseSearchInput");
+  if (exerciseFilterSelect || exerciseSearchInput) {
+    setupProfessionalFilter();
   }
 
   // Only setup exercise sort/filter if it exists (musculation.html only)
@@ -496,7 +570,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (e.key === "neostats_musculation") {
       console.log("Storage updated, reloading stats...");
       loadStats();
-      if (statsCards) {
+      if (statsTable) {
         updateDisplay();
       }
     }
@@ -504,7 +578,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Also reload when page becomes visible (when coming back from another tab)
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden && statsCards) {
+    if (!document.hidden && statsTable) {
       console.log("Page visible, reloading stats...");
       loadStats();
       updateDisplay();
@@ -513,7 +587,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Reload when page gets focus
   window.addEventListener("focus", function () {
-    if (statsCards) {
+    if (statsTable) {
       console.log("Page focused, reloading stats...");
       loadStats();
       updateDisplay();
@@ -661,6 +735,7 @@ function showExercisesForGroup(muscleGroupKey) {
   // Clear previous exercises
   exerciseGrid.innerHTML = "";
   selectedExercise = null;
+  selectedExerciseRealMuscleGroup = null;
 
   // Hide exercise preview when changing muscle group
   hideSelectedExercisePreview();
@@ -856,6 +931,13 @@ function showExercisesForGroup(muscleGroupKey) {
       this.classList.add("selected");
       selectedExercise = exercise.name;
 
+      // Store the real muscleGroup for this exercise (use originalGroup if from favorites)
+      if (exercise.originalGroup) {
+        selectedExerciseRealMuscleGroup = exercise.originalGroup;
+      } else {
+        selectedExerciseRealMuscleGroup = exerciseGroupKey;
+      }
+
       // Hide custom exercise input
       document.getElementById("customExerciseGroup").style.display = "none";
       document.getElementById("customExercise").required = false;
@@ -887,6 +969,7 @@ function showExercisesForGroup(muscleGroupKey) {
     });
     this.classList.add("selected");
     selectedExercise = "Autre";
+    selectedExerciseRealMuscleGroup = selectedMuscleGroup; // Use current selected muscle group for "Autre"
 
     // Show custom exercise input
     const customGroup = document.getElementById("customExerciseGroup");
@@ -1219,6 +1302,13 @@ function showExerciseVariantSelector(exercise, muscleGroupKey) {
       const variantExerciseName = `${exercise.name} (${variant})`;
       selectedExercise = variantExerciseName;
 
+      // Store the real muscleGroup (use originalGroup if from favorites, otherwise use muscleGroupKey)
+      if (exercise.originalGroup) {
+        selectedExerciseRealMuscleGroup = exercise.originalGroup;
+      } else {
+        selectedExerciseRealMuscleGroup = muscleGroupKey;
+      }
+
       // Mettre à jour la sélection visuelle
       document.querySelectorAll(".exercise-card").forEach((c) => {
         c.classList.remove("selected");
@@ -1365,6 +1455,12 @@ function addStat() {
     return;
   }
 
+  // Determine the correct muscleGroup to use
+  // If we selected an exercise from favorites, use its real muscleGroup
+  // Otherwise, use the selectedMuscleGroup
+  const muscleGroupToUse =
+    selectedExerciseRealMuscleGroup || selectedMuscleGroup || null;
+
   // Check if we're in edit mode
   if (editingStatId !== null) {
     // Update existing stat
@@ -1374,7 +1470,7 @@ function addStat() {
         id: editingStatId, // Keep original ID
         date: date,
         exercise: exercise,
-        muscleGroup: selectedMuscleGroup || null,
+        muscleGroup: muscleGroupToUse,
         weight: weight,
         reps: reps,
         sets: sets,
@@ -1395,7 +1491,7 @@ function addStat() {
       id: Date.now(),
       date: date,
       exercise: exercise,
-      muscleGroup: selectedMuscleGroup || null,
+      muscleGroup: muscleGroupToUse,
       weight: weight,
       reps: reps,
       sets: sets,
@@ -1416,6 +1512,7 @@ function addStat() {
     document.getElementById("sets").value = 3;
     selectedExercise = null;
     selectedMuscleGroup = null;
+    selectedExerciseRealMuscleGroup = null;
     document.querySelectorAll(".exercise-card").forEach((c) => {
       c.classList.remove("selected");
     });
@@ -1451,6 +1548,7 @@ function editStat(id) {
   // Pre-select muscle group
   const muscleGroup = stat.muscleGroup || null;
   selectedMuscleGroup = muscleGroup;
+  selectedExerciseRealMuscleGroup = muscleGroup; // Set the real muscle group for editing
 
   // Show exercise selection section
   document.getElementById("exerciseSelectionSection").style.display = "block";
@@ -1635,6 +1733,7 @@ function cancelEdit() {
   // Reset selections
   selectedExercise = null;
   selectedMuscleGroup = null;
+  selectedExerciseRealMuscleGroup = null;
   document.querySelectorAll(".exercise-card").forEach((c) => {
     c.classList.remove("selected");
   });
@@ -1717,13 +1816,18 @@ function updateDisplay() {
     updateFilterButtons();
   }
 
-  const statsCards = document.getElementById("statsCards");
-  if (statsCards) {
+  // Update professional filter select
+  const exerciseFilterSelect = document.getElementById("exerciseFilterSelect");
+  if (exerciseFilterSelect) {
+    updateFilterSelect();
+  }
+
+  const statsTable = document.getElementById("statsTable");
+  if (statsTable) {
     // Reload stats first to ensure we have the latest data
     loadStats();
 
     // Then update all displays
-    updateStatsCards();
     updateStatsTable();
     updateCharts();
     toggleEmptyState();
@@ -1731,6 +1835,139 @@ function updateDisplay() {
 }
 
 // Setup filter buttons
+// Setup professional filter system
+function setupProfessionalFilter() {
+  const exerciseFilterSelect = document.getElementById("exerciseFilterSelect");
+  const exerciseSearchInput = document.getElementById("exerciseSearchInput");
+  const clearFilterBtn = document.getElementById("clearFilterBtn");
+  const activeFilterBadge = document.getElementById("activeFilterBadge");
+
+  if (!exerciseFilterSelect) return;
+
+  // Populate select with exercises
+  updateFilterSelect();
+
+  // Handle select change
+  exerciseFilterSelect.addEventListener("change", function () {
+    const selectedValue = this.value;
+    updateFilterUI(selectedValue);
+    updateDisplay();
+  });
+
+  // Handle search input
+  if (exerciseSearchInput) {
+    let searchTimeout;
+    exerciseSearchInput.addEventListener("input", function () {
+      clearTimeout(searchTimeout);
+      const searchTerm = this.value.toLowerCase().trim();
+
+      // Filter select options based on search
+      const options = exerciseFilterSelect.querySelectorAll("option");
+      options.forEach((option) => {
+        if (option.value === "all") {
+          option.style.display = "block";
+          return;
+        }
+        const exerciseName = option.textContent.toLowerCase();
+        if (exerciseName.includes(searchTerm)) {
+          option.style.display = "block";
+        } else {
+          option.style.display = "none";
+        }
+      });
+
+      // If search matches an exercise, select it
+      searchTimeout = setTimeout(() => {
+        const matchingOption = Array.from(options).find(
+          (opt) =>
+            opt.value !== "all" &&
+            opt.textContent.toLowerCase().includes(searchTerm) &&
+            opt.style.display !== "none"
+        );
+        if (matchingOption && searchTerm.length > 0) {
+          exerciseFilterSelect.value = matchingOption.value;
+          updateFilterUI(matchingOption.value);
+          updateDisplay();
+        }
+      }, 300);
+    });
+  }
+
+  // Handle clear filter button
+  if (clearFilterBtn) {
+    clearFilterBtn.addEventListener("click", function () {
+      clearFilter();
+    });
+  }
+}
+
+// Update filter select dropdown
+function updateFilterSelect() {
+  const exerciseFilterSelect = document.getElementById("exerciseFilterSelect");
+  if (!exerciseFilterSelect) return;
+
+  const exercises = [...new Set(stats.map((stat) => stat.exercise))].sort();
+  const currentValue = exerciseFilterSelect.value;
+
+  // Clear existing options except "all"
+  exerciseFilterSelect.innerHTML =
+    '<option value="all">Tous les exercices</option>';
+
+  // Add exercise options
+  exercises.forEach((exercise) => {
+    const option = document.createElement("option");
+    option.value = exercise;
+    option.textContent = exercise;
+    exerciseFilterSelect.appendChild(option);
+  });
+
+  // Restore previous selection if still valid
+  if (currentValue && exercises.includes(currentValue)) {
+    exerciseFilterSelect.value = currentValue;
+  } else {
+    exerciseFilterSelect.value = "all";
+  }
+
+  updateFilterUI(exerciseFilterSelect.value);
+}
+
+// Update filter UI (badge, clear button)
+function updateFilterUI(selectedValue) {
+  const clearFilterBtn = document.getElementById("clearFilterBtn");
+  const activeFilterBadge = document.getElementById("activeFilterBadge");
+  const badgeText = activeFilterBadge?.querySelector(".badge-text");
+
+  if (selectedValue === "all") {
+    if (clearFilterBtn) clearFilterBtn.style.display = "none";
+    if (activeFilterBadge) activeFilterBadge.style.display = "none";
+  } else {
+    if (clearFilterBtn) clearFilterBtn.style.display = "block";
+    if (activeFilterBadge && badgeText) {
+      activeFilterBadge.style.display = "flex";
+      badgeText.textContent = `Filtre actif: ${selectedValue}`;
+    }
+  }
+}
+
+// Clear filter function
+function clearFilter() {
+  const exerciseFilterSelect = document.getElementById("exerciseFilterSelect");
+  const exerciseSearchInput = document.getElementById("exerciseSearchInput");
+
+  if (exerciseFilterSelect) {
+    exerciseFilterSelect.value = "all";
+  }
+  if (exerciseSearchInput) {
+    exerciseSearchInput.value = "";
+  }
+
+  updateFilterUI("all");
+  updateDisplay();
+}
+
+// Make clearFilter globally accessible
+window.clearFilter = clearFilter;
+
 function setupFilterButtons() {
   // Only setup if filter buttons container exists (musculation.html only)
   const filterButtons = document.getElementById("filterButtons");
@@ -1751,51 +1988,67 @@ function setupFilterButtons() {
   }
 }
 
-// Update filter buttons
+// Update filter buttons (legacy - kept for backward compatibility)
 function updateFilterButtons() {
   const filterButtons = document.getElementById("filterButtons");
-  const exercises = [...new Set(stats.map((stat) => stat.exercise))].sort();
+  if (filterButtons) {
+    const exercises = [...new Set(stats.map((stat) => stat.exercise))].sort();
 
-  // Get "Tous" button
-  const allBtn = filterButtons.querySelector('[data-filter="all"]');
-  const isAllActive = allBtn && allBtn.classList.contains("active");
+    // Get "Tous" button
+    const allBtn = filterButtons.querySelector('[data-filter="all"]');
+    const isAllActive = allBtn && allBtn.classList.contains("active");
 
-  // Clear and rebuild
-  filterButtons.innerHTML = "";
+    // Clear and rebuild
+    filterButtons.innerHTML = "";
 
-  // Recreate "Tous" button
-  const newAllBtn = document.createElement("button");
-  newAllBtn.className = "filter-btn" + (isAllActive ? " active" : "");
-  newAllBtn.dataset.filter = "all";
-  newAllBtn.textContent = "Tous";
-  newAllBtn.addEventListener("click", function () {
-    document.querySelectorAll(".filter-btn").forEach((b) => {
-      b.classList.remove("active");
-    });
-    this.classList.add("active");
-    updateDisplay();
-  });
-  filterButtons.appendChild(newAllBtn);
-
-  // Add exercise buttons
-  exercises.forEach((exercise) => {
-    const btn = document.createElement("button");
-    btn.className = "filter-btn";
-    btn.dataset.filter = exercise;
-    btn.textContent = exercise;
-    btn.addEventListener("click", function () {
+    // Recreate "Tous" button
+    const newAllBtn = document.createElement("button");
+    newAllBtn.className = "filter-btn" + (isAllActive ? " active" : "");
+    newAllBtn.dataset.filter = "all";
+    newAllBtn.textContent = "Tous";
+    newAllBtn.addEventListener("click", function () {
       document.querySelectorAll(".filter-btn").forEach((b) => {
         b.classList.remove("active");
       });
       this.classList.add("active");
       updateDisplay();
     });
-    filterButtons.appendChild(btn);
-  });
+    filterButtons.appendChild(newAllBtn);
+
+    // Add exercise buttons
+    exercises.forEach((exercise) => {
+      const btn = document.createElement("button");
+      btn.className = "filter-btn";
+      btn.dataset.filter = exercise;
+      btn.textContent = exercise;
+      btn.addEventListener("click", function () {
+        document.querySelectorAll(".filter-btn").forEach((b) => {
+          b.classList.remove("active");
+        });
+        this.classList.add("active");
+        updateDisplay();
+      });
+      filterButtons.appendChild(btn);
+    });
+  }
+
+  // Update professional filter select
+  updateFilterSelect();
 }
 
 // Get filtered stats
 function getFilteredStats() {
+  // Check for professional filter system first
+  const exerciseFilterSelect = document.getElementById("exerciseFilterSelect");
+  if (exerciseFilterSelect) {
+    const selectedValue = exerciseFilterSelect.value;
+    if (selectedValue === "all") {
+      return stats;
+    }
+    return stats.filter((stat) => stat.exercise === selectedValue);
+  }
+
+  // Fallback to legacy filter buttons
   const activeFilter = document.querySelector(".filter-btn.active");
   if (!activeFilter || activeFilter.dataset.filter === "all") {
     return stats;
@@ -1804,83 +2057,7 @@ function getFilteredStats() {
 }
 
 // Update stats cards
-function updateStatsCards() {
-  const container = document.getElementById("statsCards");
-  const filteredStats = getFilteredStats();
-
-  if (filteredStats.length === 0) {
-    container.innerHTML = "";
-    return;
-  }
-
-  // Group by exercise
-  const exerciseGroups = {};
-  filteredStats.forEach((stat) => {
-    if (!exerciseGroups[stat.exercise]) {
-      exerciseGroups[stat.exercise] = [];
-    }
-    exerciseGroups[stat.exercise].push(stat);
-  });
-
-  container.innerHTML = "";
-
-  Object.keys(exerciseGroups).forEach((exercise) => {
-    const exerciseStats = exerciseGroups[exercise];
-    const sortedStats = exerciseStats.sort(
-      (a, b) => new Date(a.date) - new Date(b.date)
-    );
-
-    // Calculate stats
-    const latestStat = sortedStats[sortedStats.length - 1];
-    const firstStat = sortedStats[0];
-    const maxWeight = Math.max(...exerciseStats.map((s) => s.weight));
-    const improvement = latestStat.weight - firstStat.weight;
-    const improvementPercent =
-      firstStat.weight > 0
-        ? ((improvement / firstStat.weight) * 100).toFixed(1)
-        : 0;
-
-    // Find exercise icon from all groups
-    let icon = "💪";
-    Object.keys(exercisesByGroup).forEach((groupKey) => {
-      const exerciseData = exercisesByGroup[groupKey].find(
-        (e) => e.name === exercise
-      );
-      if (exerciseData) {
-        icon = exerciseData.icon;
-      }
-    });
-
-    const card = document.createElement("div");
-    card.className = "stat-card";
-    card.innerHTML = `
-      <h3>${icon} ${exercise}</h3>
-      <div class="stat-item">
-        <span>Poids actuel</span>
-        <span class="stat-value">${latestStat.weight} kg</span>
-      </div>
-      <div class="stat-item">
-        <span>Poids max</span>
-        <span class="stat-value">${maxWeight} kg</span>
-      </div>
-      <div class="stat-item">
-        <span>Amélioration</span>
-        <span class="stat-value" style="color: ${
-          improvement >= 0 ? "#2ed573" : "#ff4757"
-        }">
-          ${improvement >= 0 ? "+" : ""}${improvement.toFixed(
-      1
-    )} kg (${improvementPercent}%)
-        </span>
-      </div>
-      <div class="stat-item">
-        <span>Exercices</span>
-        <span class="stat-value">${exerciseStats.length}</span>
-      </div>
-    `;
-    container.appendChild(card);
-  });
-}
+// updateStatsCards() removed - exercise cards are now only displayed in mes-stats.html
 
 // Update stats table
 function updateStatsTable() {
@@ -1909,15 +2086,31 @@ function updateStatsTable() {
     });
 
     row.innerHTML = `
-      <td>${formattedDate}</td>
-      <td><strong>${stat.exercise}</strong></td>
-      <td>${stat.weight} kg</td>
-      <td>${stat.reps}</td>
-      <td>${stat.sets}</td>
       <td>
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <button class="btn btn-secondary" onclick="editStat(${stat.id})" style="padding: 0.5rem 1rem; font-size: 0.875rem;">✏️ Modifier</button>
-          <button class="btn btn-danger" onclick="deleteStat(${stat.id})" style="padding: 0.5rem 1rem; font-size: 0.875rem;">🗑️ Supprimer</button>
+        <span class="table-date">${formattedDate}</span>
+      </td>
+      <td>
+        <span class="table-exercise">${stat.exercise}</span>
+      </td>
+      <td>
+        <span class="table-weight">${stat.weight} <span class="unit">kg</span></span>
+      </td>
+      <td>
+        <span class="table-reps">${stat.reps}</span>
+      </td>
+      <td>
+        <span class="table-sets">${stat.sets}</span>
+      </td>
+      <td>
+        <div class="table-actions">
+          <button class="table-btn table-btn-edit" onclick="editStat(${stat.id})" title="Modifier">
+            <span class="btn-icon">✏️</span>
+            <span class="btn-text">Modifier</span>
+          </button>
+          <button class="table-btn table-btn-delete" onclick="deleteStat(${stat.id})" title="Supprimer">
+            <span class="btn-icon">🗑️</span>
+            <span class="btn-text">Supprimer</span>
+          </button>
         </div>
       </td>
     `;
@@ -2070,7 +2263,6 @@ function updateCharts() {
 // Toggle empty state
 function toggleEmptyState() {
   const emptyState = document.getElementById("emptyState");
-  const statsCards = document.getElementById("statsCards");
   const statsTable = document.getElementById("statsTable");
   const chartsSection = document.getElementById("chartsSection");
   const emptyStateTitle = emptyState?.querySelector("h3");
@@ -2095,9 +2287,6 @@ function toggleEmptyState() {
       }
     }
 
-    if (statsCards) {
-      statsCards.style.display = "none";
-    }
     if (statsTable) {
       statsTable.style.display = "none";
     }
@@ -2108,9 +2297,6 @@ function toggleEmptyState() {
     // Hide empty state, show stats
     if (emptyState) {
       emptyState.style.display = "none";
-    }
-    if (statsCards) {
-      statsCards.style.display = "grid";
     }
     if (statsTable) {
       statsTable.style.display = "block";

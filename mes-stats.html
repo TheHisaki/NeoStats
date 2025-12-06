@@ -13,7 +13,9 @@
       <div class="container">
         <div class="nav-brand">
           <a href="index.html">
-            <h1>📊 NeoStats</h1>
+            <h1>
+              <span class="emoji">📊</span><span class="text">NeoStats</span>
+            </h1>
           </a>
         </div>
         <button
@@ -35,7 +37,10 @@
     <main class="main-content">
       <div class="container">
         <div class="page-header">
-          <h1 class="page-title">📊 Mes Statistiques</h1>
+          <h1 class="page-title">
+            <span class="emoji">📊</span
+            ><span class="text">Mes Statistiques</span>
+          </h1>
           <p class="page-subtitle">
             Consultez toutes vos performances en détail
           </p>
@@ -44,7 +49,9 @@
         <!-- Filters Section -->
         <section class="stats-filters-section">
           <div class="section-header">
-            <h2>🔍 Filtres</h2>
+            <h2>
+              <span class="emoji">🔍</span><span class="text">Filtres</span>
+            </h2>
             <p>Filtrez vos statistiques pour une analyse précise</p>
           </div>
 
@@ -144,27 +151,41 @@
         <!-- Stats Table Section -->
         <section class="stats-table-section">
           <div class="section-header">
-            <h2>📋 Détails des exercices</h2>
+            <h2>
+              <span class="emoji">📋</span
+              ><span class="text">Détails des exercices</span>
+            </h2>
             <p>Toutes vos performances enregistrées</p>
           </div>
 
           <div class="stats-table-container">
-            <table class="stats-table" id="statsTable">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Catégorie</th>
-                  <th>Exercice</th>
-                  <th>Poids (kg)</th>
-                  <th>Répétitions</th>
-                  <th>Séries</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="statsTableBody">
-                <!-- Les données seront injectées ici -->
-              </tbody>
-            </table>
+            <div class="table-header">
+              <h3 class="table-title">
+                <span class="table-title-icon">📋</span>
+                Historique complet
+              </h3>
+              <p class="table-subtitle">
+                Gérez et consultez tous vos exercices enregistrés
+              </p>
+            </div>
+            <div class="table-wrapper">
+              <table class="stats-table" id="statsTable">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Catégorie</th>
+                    <th>Exercice</th>
+                    <th>Poids</th>
+                    <th>Rép</th>
+                    <th>Séries</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="statsTableBody">
+                  <!-- Les données seront injectées ici -->
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div id="emptyStatsMessage" class="empty-state" style="display: none">
@@ -183,7 +204,10 @@
         <!-- Exercise Stats Section -->
         <section class="exercise-stats-section">
           <div class="section-header">
-            <h2>📊 Statistiques par exercice</h2>
+            <h2>
+              <span class="emoji">📊</span
+              ><span class="text">Statistiques par exercice</span>
+            </h2>
             <p>Analyse détaillée de chaque exercice</p>
           </div>
 
@@ -195,7 +219,10 @@
         <!-- Progress Charts Section -->
         <section class="progress-charts-section">
           <div class="section-header">
-            <h2>📈 Graphiques de progression</h2>
+            <h2>
+              <span class="emoji">📈</span
+              ><span class="text">Graphiques de progression</span>
+            </h2>
             <p>Visualisez votre évolution dans le temps</p>
           </div>
 

@@ -17,10 +17,15 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  // Set today's date as default for date inputs
+  // Set today's date as default for date inputs (except filter inputs in stats page)
   const today = new Date().toISOString().split("T")[0];
   const dateInputs = document.querySelectorAll('input[type="date"]');
   dateInputs.forEach((input) => {
+    // Skip filter date inputs (dateStart and dateEnd in stats page)
+    if (input.id === "dateStart" || input.id === "dateEnd") {
+      return;
+    }
+    // Set today's date only if input has no value
     if (!input.value) {
       input.value = today;
     }
